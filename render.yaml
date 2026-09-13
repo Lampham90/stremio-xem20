@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: stremio-xem20-addon
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 7000
+      - key: XEM20_USERNAME
+        value: streamio_test10
+      - key: XEM20_PASSWORD
+        value: TestPassword123!
