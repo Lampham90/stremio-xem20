@@ -46,7 +46,7 @@ class KKPhimService {
     return null;
   }
 
-  buildMetaItem(item, isSeries) {
+  buildMetaItem(item, catalogType) {
     const imdbId = this.extractImdbId(item);
     const finalId = imdbId || `kk:${item.slug}`;
     if (imdbId) {
@@ -54,19 +54,19 @@ class KKPhimService {
       this.slugToImdbMap.set(item.slug, imdbId);
     }
 
-    // Nếu có IMDb ID -> Sử dụng poster và background sắc nét từ TMDB / Metahub
-    let poster = this.formatImageUrl(item.poster_url || item.poster || item.thumb_url);
-    let background = this.formatImageUrl(item.thumb_url || item.thumb || item.poster_url);
+    // 1. POSTER: Giữ nguyên poster gốc của phim theo yêu cầu
+    const poster = this.formatImageUrl(item.poster_url || item.poster || item.thumb_url);
 
+    // 2. BACKGROUND: Sử dụng hình nền TMDB sắc nét cho banner đầu trang trên Home
+    let background = this.formatImageUrl(item.thumb_url || item.thumb || item.poster_url);
     if (imdbId) {
-      poster = `https://images.metahub.space/poster/medium/${imdbId}/img`;
       background = `https://images.metahub.space/background/medium/${imdbId}/img`;
     }
 
     return {
       id: finalId,
       name: item.name,
-      type: isSeries ? 'series' : 'movie',
+      type: catalogType || (item.type === 'series' ? 'series' : 'movie'),
       poster,
       background,
       releaseInfo: item.year ? String(item.year) : '',
@@ -96,6 +96,9 @@ class KKPhimService {
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expireAt > Date.now()) return cached.data;
 
+    const isSeriesCatalog = catalogId.startsWith('kk_bo_') || catalogId === 'kk_anime_nhat' || catalogId === 'kk_hh_trung_quoc';
+    const catalogType = isSeriesCatalog ? 'series' : 'movie';
+
     let metas = [];
 
     if (catalogId === 'kk_latest') {
@@ -103,10 +106,7 @@ class KKPhimService {
       try {
         const res = await axios.get(`${this.phimApiBase}/danh-sach/phim-moi-cap-nhat?page=${page}`, { timeout: 8000 });
         const items = res.data?.items || [];
-        metas = items.map(item => {
-          const isSeries = item.tmdb?.type === 'tv' || (item.episode_total && item.episode_total > 1);
-          return this.buildMetaItem(item, isSeries);
-        });
+        metas = items.map(item => this.buildMetaItem(item, catalogType));
       } catch (err) {
         console.error('[KKPhim] Lỗi fetch phim-moi-cap-nhat:', err.message);
       }
@@ -115,13 +115,20 @@ class KKPhimService {
       const perfect = await this.getPerfectCategories();
       const items = perfect[catKey] || [];
 
-      const isSeriesCatalog = catKey.startsWith('bo_') || catKey === 'anime_nhat' || catKey === 'hh_trung_quoc';
-      const slicedItems = items.slice(skip, skip + 24);
-
-      metas = slicedItems.map(item => {
-        const isSeries = isSeriesCatalog || item.type === 'series' || (item.episode_total && item.episode_total > 1);
-        return this.buildMetaItem(item, isSeries);
-      });
+      if (items.length > 0) {
+        const slicedItems = items.slice(skip, skip + 24);
+        metas = slicedItems.map(item => this.buildMetaItem(item, catalogType));
+      } else {
+        // Fallback sang phimapi nếu category worker trống
+        try {
+          const page = Math.floor(skip / 24) + 1;
+          const res = await axios.get(`${this.phimApiBase}/v1/api/danh-sach/${encodeURIComponent(catKey)}?page=${page}`, { timeout: 8000 });
+          const list = res.data?.data?.items || [];
+          metas = list.map(item => this.buildMetaItem(item, catalogType));
+        } catch (e) {
+          console.warn(`[KKPhim] Fallback fetch error cho ${catKey}:`, e.message);
+        }
+      }
     }
 
     this.cache.set(cacheKey, { data: metas, expireAt: Date.now() + this.cacheTtl });
@@ -136,7 +143,7 @@ class KKPhimService {
       const items = res.data?.data?.items || [];
       return items.map(item => {
         const isSeries = item.episode_current && !item.episode_current.toLowerCase().includes('full');
-        return this.buildMetaItem(item, isSeries);
+        return this.buildMetaItem(item, isSeries ? 'series' : 'movie');
       });
     } catch (err) {
       console.error('[KKPhim] Lỗi search:', err.message);
@@ -151,28 +158,20 @@ class KKPhimService {
     if (cached && cached.expireAt > Date.now()) return cached.data;
 
     try {
-      const res = await axios.get(`${this.phimApiBase}/phim/${slug}`, { timeout: 8000 });
+      const res = await axios.get(`${this.phimApiBase}/phim/${encodeURIComponent(slug)}`, { timeout: 8000 });
       const data = res.data;
       if (!data || !data.movie) return null;
 
       const m = data.movie;
-      const isSeries = m.type === 'series' || (m.episode_total && m.episode_total > 1) || m.episode_current?.includes('Tập');
-
-      const videos = [];
       const episodes = data.episodes || [];
-      if (episodes.length > 0) {
-        const firstServer = episodes[0]?.server_data || [];
-        firstServer.forEach(ep => {
-          const epNum = parseInt(ep.name?.replace(/\D/g, '') || '1', 10);
-          videos.push({
-            id: `kk:${slug}:1:${epNum}`,
-            title: ep.name || `Tập ${epNum}`,
-            season: 1,
-            episode: epNum,
-            released: new Date().toISOString()
-          });
-        });
-      }
+
+      let hasEpisodes = false;
+      episodes.forEach(server => {
+        const list = server.server_data || [];
+        if (list.length > 1) hasEpisodes = true;
+      });
+
+      const isSeries = hasEpisodes || (m.type === 'series') || (m.episode_total && parseInt(m.episode_total, 10) > 1);
 
       const imdbId = this.extractImdbId(m);
       if (imdbId) {
@@ -180,15 +179,43 @@ class KKPhimService {
         this.slugToImdbMap.set(slug, imdbId);
       }
 
-      let poster = this.formatImageUrl(m.poster_url || m.thumb_url);
+      const idToUse = imdbId || `kk:${slug}`;
+
+      const videos = [];
+      if (isSeries) {
+        const epSet = new Set();
+        episodes.forEach(s => {
+          (s.server_data || []).forEach(ep => {
+            const epNum = parseInt(ep.name?.replace(/\D/g, '') || '1', 10) || 1;
+            epSet.add(epNum);
+          });
+        });
+
+        const sortedNums = Array.from(epSet).sort((a, b) => a - b);
+        if (sortedNums.length === 0) sortedNums.push(1);
+
+        sortedNums.forEach(num => {
+          videos.push({
+            id: `${idToUse}:1:${num}`,
+            title: `Tập ${num}`,
+            season: 1,
+            episode: num,
+            released: new Date().toISOString()
+          });
+        });
+      }
+
+      // Poster giữ nguyên ảnh gốc của phim
+      const poster = this.formatImageUrl(m.poster_url || m.thumb_url);
+
+      // Background: Sử dụng TMDB Backdrop sắc nét trong chi tiết phim
       let background = this.formatImageUrl(m.thumb_url || m.poster_url);
       if (imdbId) {
-        poster = `https://images.metahub.space/poster/medium/${imdbId}/img`;
         background = `https://images.metahub.space/background/medium/${imdbId}/img`;
       }
 
       const result = {
-        id: imdbId || `kk:${slug}`,
+        id: idToUse,
         imdbId: imdbId,
         slug: slug,
         title: m.name,
@@ -199,8 +226,8 @@ class KKPhimService {
         background,
         description: this.cleanHtml(m.content),
         genres: (m.category || []).map(c => c.name),
-        director: m.director?.[0] || '',
-        cast: m.actor || [],
+        director: Array.isArray(m.director) ? m.director.join(', ') : (m.director || ''),
+        cast: Array.isArray(m.actor) ? m.actor : (typeof m.actor === 'string' ? m.actor.split(',').map(s => s.trim()) : []),
         imdbScore: m.imdb?.vote_average || undefined,
         episodes: episodes,
         videos: videos

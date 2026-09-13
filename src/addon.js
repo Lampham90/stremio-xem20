@@ -19,7 +19,7 @@ const httpsAgent = new https.Agent({
 // 1. MANIFEST (Tên: 'Ghiền Phim', Mô tả: 'Xem phim không quảng cáo')
 const manifest = {
   id: 'community.ghienphim',
-  version: '2.3.0',
+  version: '2.4.0',
   name: 'Ghiền Phim',
   description: 'Xem phim không quảng cáo',
   logo: 'https://xem20.net/storage/logo/favicon_xem14.png',
@@ -135,19 +135,21 @@ router.get('/catalog/:type/:id.json', async (req, res) => {
   }
 });
 
-// 3. META (Để TMDB / Cinemeta xử lý chi tiết phim & banner hình ảnh siêu nét)
+// 3. META (Poster giữ nguyên, Hình nền chi tiết phim dùng TMDB siêu nét)
 router.get('/meta/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
 
   try {
-    // Nếu là ID chuẩn IMDb (tt...) -> Để mặc định cho TMDB / Cinemeta của Stremio xử lý để có backdrop và poster 4K siêu nét
-    if (id.startsWith('tt')) {
-      return res.json({ meta: null });
-    }
+    let targetSlug = null;
 
     if (id.startsWith('kk:')) {
-      const slug = id.replace('kk:', '');
-      const detail = await kkphim.getMovieDetail(slug);
+      targetSlug = id.replace('kk:', '');
+    } else if (id.startsWith('tt')) {
+      targetSlug = await kkphim.findSlugByImdb(id);
+    }
+
+    if (targetSlug) {
+      const detail = await kkphim.getMovieDetail(targetSlug);
       if (detail) {
         const meta = {
           id: id,
