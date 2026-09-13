@@ -7,10 +7,16 @@ const config = require('./config');
 
 const router = express.Router();
 
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 50,
+  timeout: 60000
+});
+
 // 1. MANIFEST
 const manifest = {
   id: 'community.xem20',
-  version: '1.0.1',
+  version: '1.1.0',
   name: 'XEM20 - Phim Thuyết Minh & Vietsub',
   description: 'Xem phim chất lượng cao 4K UHD, 1080p Bluray, Thuyết minh và Vietsub trực tiếp từ xem20.net (Xem14)',
   logo: 'https://xem20.net/storage/logo/favicon_xem14.png',
@@ -129,7 +135,6 @@ router.get('/meta/:type/:id.json', async (req, res) => {
 // 4. STREAM
 router.get('/stream/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
-  // Always respect HTTPS on Render / reverse proxies
   const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
   const proto = isHttps ? 'https' : 'http';
   const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
@@ -189,7 +194,8 @@ router.get('/stream/:type/:id.json', async (req, res) => {
       matchingReleases = detail.releases;
     }
 
-    const streams = matchingReleases.map(rel => {
+    const streams = [];
+    matchingReleases.forEach(rel => {
       const isDub = rel.metaText.includes('Thuyết minh') || rel.name.includes('TM.') || rel.name.includes('Thuyết Minh');
       const isSub = rel.metaText.includes('Phụ Đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub') || rel.name.includes('Sub');
       const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('2160p');
@@ -204,11 +210,19 @@ router.get('/stream/:type/:id.json', async (req, res) => {
       else if (isDub) audioTag = '🔊 Thuyết Minh';
       else if (isSub) audioTag = '💬 Vietsub';
 
-      return {
-        name: `XEM20 [${qualityTag}]`,
-        title: `${rel.name}\n${audioTag ? audioTag + ' · ' : ''}${rel.metaText}`,
-        url: `${host}/play/${rel.downloadLinkId}`
-      };
+      // 1. Luồng Siêu Tốc (Direct CDN 307 Redirect): Kết nối trực tiếp, mượt mà tối đa
+      streams.push({
+        name: `XEM20 ⚡ [${qualityTag}]`,
+        title: `${rel.name}\n⚡ Siêu Tốc (Direct CDN)\n${audioTag ? audioTag + ' · ' : ''}${rel.metaText}`,
+        url: `${host}/play/${rel.downloadLinkId}?mode=direct`
+      });
+
+      // 2. Luồng Dự Phòng (Proxy Bypass): Dành cho trường hợp IP bị giới hạn hạn mức
+      streams.push({
+        name: `XEM20 🛡️ [${qualityTag}]`,
+        title: `${rel.name}\n🛡️ Dự Phòng (Proxy Bypass)\n${audioTag ? audioTag + ' · ' : ''}${rel.metaText}`,
+        url: `${host}/play/${rel.downloadLinkId}?mode=proxy`
+      });
     });
 
     res.json({ streams });
@@ -218,19 +232,64 @@ router.get('/stream/:type/:id.json', async (req, res) => {
   }
 });
 
-// 5. PLAY STREAM ENDPOINT: DIRECT 307 REDIRECT FOR MAX SPEED
+// 5. SMART PLAY STREAM ENDPOINT (Direct CDN vs Keep-Alive Range Proxy)
 router.get('/play/:id', async (req, res) => {
   const downloadLinkId = req.params.id;
+  const mode = req.query.mode || 'direct';
+
   try {
     const directStreamUrl = await xem20Client.resolveStreamUrl(downloadLinkId);
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', '*');
 
-    // Chuyển hướng 307 để Stremio kết nối trực tiếp tới máy chủ CDN (dl.downfshare.top)
-    // Giúp tận dụng tối đa tốc độ mạng nội địa, xem 4K/1080p mượt mà không bị nghẽn qua Render
-    console.log(`[Play #${downloadLinkId}] Chuyển hướng 307 trực tiếp tới: ${directStreamUrl}`);
-    return res.redirect(307, directStreamUrl);
+    // 1. CHẾ ĐỘ TRỰC TIẾP (DIRECT 307): Stremio nối thẳng tới máy chủ video để đạt tốc độ cao nhất
+    if (mode === 'direct') {
+      console.log(`[Play #${downloadLinkId}] [Direct] 307 Redirect -> ${directStreamUrl}`);
+      return res.redirect(307, directStreamUrl);
+    }
+
+    // 2. CHẾ ĐỘ PROXY DỰ PHÒNG: Render làm trung chuyển với Keep-Alive & 1MB buffer
+    console.log(`[Play #${downloadLinkId}] [Proxy] Streaming -> ${directStreamUrl}`);
+    const streamHeaders = {
+      'User-Agent': req.headers['user-agent'] || 'Stremio/4.4.168',
+      'Referer': config.xem20.baseUrl + '/'
+    };
+    if (req.headers.range) {
+      streamHeaders['Range'] = req.headers.range;
+    }
+
+    const clientHttp = directStreamUrl.startsWith('https') ? https : http;
+    const proxyReq = clientHttp.get(directStreamUrl, {
+      headers: streamHeaders,
+      agent: directStreamUrl.startsWith('https') ? httpsAgent : undefined,
+      highWaterMark: 1024 * 1024
+    }, (proxyRes) => {
+      if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+        return res.redirect(proxyRes.statusCode, proxyRes.headers.location);
+      }
+
+      res.status(proxyRes.statusCode);
+      ['content-type', 'content-length', 'content-range', 'accept-ranges', 'content-disposition'].forEach(h => {
+        if (proxyRes.headers[h]) {
+          res.setHeader(h, proxyRes.headers[h]);
+        }
+      });
+
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (err) => {
+      console.error(`[Proxy Error #${downloadLinkId}]:`, err.message);
+      if (!res.headersSent) {
+        res.redirect(307, directStreamUrl);
+      }
+    });
+
+    req.on('close', () => {
+      proxyReq.destroy();
+    });
+
   } catch (err) {
     console.error(`[Addon] Không thể phát stream #${downloadLinkId}:`, err.message);
     res.status(502).send('Lỗi khi lấy stream video từ xem20: ' + err.message);
