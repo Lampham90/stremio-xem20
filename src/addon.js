@@ -352,7 +352,7 @@ router.get('/api/xem20/movie', async (req, res) => {
           const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('Thuyết Minh');
           const isSub = rel.metaText.includes('Phụ đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub');
 
-          let sName = is4K ? 'XEM20 • 4K UHD' : 'XEM20 • 1080P FHD';
+          let sName = is4K ? '4K UHD' : '1080P FHD';
           if (isDub && !isSub) sName += ' (TM)';
           else if (isSub && !isDub) sName += ' (Sub)';
 
@@ -398,7 +398,7 @@ router.get('/api/xem20/movie', async (req, res) => {
         else if (isDub) audioTag = 'Thuyết Minh';
         else if (isSub) audioTag = 'Vietsub';
 
-        const serverName = `XEM20 • ${qualityTag}${audioTag ? ' (' + audioTag + ')' : ''}`;
+        const serverName = `${qualityTag}${audioTag ? ' (' + audioTag + ')' : ''}`;
 
         servers.push({
           serverName: serverName,
