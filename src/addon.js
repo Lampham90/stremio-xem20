@@ -19,7 +19,7 @@ const httpsAgent = new https.Agent({
 // 1. MANIFEST (Tên: 'Ghiền Phim', Mô tả: 'Xem phim không quảng cáo')
 const manifest = {
   id: 'community.ghienphim',
-  version: '2.4.0',
+  version: '2.5.0',
   name: 'Ghiền Phim',
   description: 'Xem phim không quảng cáo',
   logo: 'https://xem20.net/storage/logo/favicon_xem14.png',
@@ -135,7 +135,7 @@ router.get('/catalog/:type/:id.json', async (req, res) => {
   }
 });
 
-// 3. META (Poster giữ nguyên, Hình nền chi tiết phim dùng TMDB siêu nét)
+// 3. META (Hiển thị đầy đủ chi tiết phim gốc)
 router.get('/meta/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
 

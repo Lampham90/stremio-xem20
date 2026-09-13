@@ -3,7 +3,6 @@ const cinemeta = require('./cinemeta');
 
 class KKPhimService {
   constructor() {
-    this.workerBase = 'https://kkapp.pl9.workers.dev';
     this.phimApiBase = 'https://phimapi.com';
     this.imgBase = 'https://phimimg.com/';
     this.cache = new Map();
@@ -13,9 +12,22 @@ class KKPhimService {
     this.imdbToSlugMap = new Map();
     this.slugToImdbMap = new Map();
 
-    // Cache cho worker perfect categories
-    this.perfectData = null;
-    this.perfectExpireAt = 0;
+    // Bản đồ danh mục sang endpoint chính thức của phimapi.com (luôn ổn định 100%)
+    this.catEndpoints = {
+      kk_latest: 'https://phimapi.com/danh-sach/phim-moi-cap-nhat?page=',
+      kk_phim_chieu_rap: 'https://phimapi.com/v1/api/danh-sach/phim-le?page=',
+      kk_long_tieng: 'https://phimapi.com/v1/api/danh-sach/phim-bo?page=',
+      kk_thuyet_minh: 'https://phimapi.com/v1/api/danh-sach/phim-le?page=',
+      kk_bo_han: 'https://phimapi.com/v1/api/quoc-gia/han-quoc?page=',
+      kk_bo_trung: 'https://phimapi.com/v1/api/quoc-gia/trung-quoc?page=',
+      kk_bo_au_my: 'https://phimapi.com/v1/api/quoc-gia/au-my?page=',
+      kk_bo_vn: 'https://phimapi.com/v1/api/quoc-gia/viet-nam?page=',
+      kk_bo_thai: 'https://phimapi.com/v1/api/quoc-gia/thai-lan?page=',
+      kk_bo_nhat: 'https://phimapi.com/v1/api/quoc-gia/nhat-ban?page=',
+      kk_anime_nhat: 'https://phimapi.com/v1/api/danh-sach/hoat-hinh?page=',
+      kk_hh_trung_quoc: 'https://phimapi.com/v1/api/danh-sach/hoat-hinh?page=',
+      kk_kinh_di: 'https://phimapi.com/v1/api/the-loai/kinh-di?page='
+    };
   }
 
   formatImageUrl(url) {
@@ -54,14 +66,8 @@ class KKPhimService {
       this.slugToImdbMap.set(item.slug, imdbId);
     }
 
-    // 1. POSTER: Giữ nguyên poster gốc của phim theo yêu cầu
     const poster = this.formatImageUrl(item.poster_url || item.poster || item.thumb_url);
-
-    // 2. BACKGROUND: Sử dụng hình nền TMDB sắc nét cho banner đầu trang trên Home
-    let background = this.formatImageUrl(item.thumb_url || item.thumb || item.poster_url);
-    if (imdbId) {
-      background = `https://images.metahub.space/background/medium/${imdbId}/img`;
-    }
+    const background = this.formatImageUrl(item.thumb_url || item.thumb || item.poster_url);
 
     return {
       id: finalId,
@@ -70,25 +76,8 @@ class KKPhimService {
       poster,
       background,
       releaseInfo: item.year ? String(item.year) : '',
-      description: this.cleanHtml(item.description || item.movieDescription || item.sub_type || `Phim (${item.year || ''})`)
+      description: this.cleanHtml(item.content || item.description || item.movieDescription || item.sub_type || `Phim (${item.year || ''})`)
     };
-  }
-
-  async getPerfectCategories() {
-    if (this.perfectData && this.perfectExpireAt > Date.now()) {
-      return this.perfectData;
-    }
-    try {
-      const res = await axios.get(`${this.workerBase}/api/movies/perfect`, { timeout: 10000 });
-      if (res.data && typeof res.data === 'object') {
-        this.perfectData = res.data;
-        this.perfectExpireAt = Date.now() + 10 * 60 * 1000;
-        return this.perfectData;
-      }
-    } catch (e) {
-      console.warn('[KKPhim] Lỗi tải perfect categories:', e.message);
-    }
-    return {};
   }
 
   async getCatalog(catalogId, skip = 0) {
@@ -100,35 +89,15 @@ class KKPhimService {
     const catalogType = isSeriesCatalog ? 'series' : 'movie';
 
     let metas = [];
+    const targetEndpoint = this.catEndpoints[catalogId] || `${this.phimApiBase}/v1/api/danh-sach/${catalogId.replace(/^kk_/, '')}?page=`;
+    const page = Math.floor(skip / 24) + 1;
 
-    if (catalogId === 'kk_latest') {
-      const page = Math.floor(skip / 24) + 1;
-      try {
-        const res = await axios.get(`${this.phimApiBase}/danh-sach/phim-moi-cap-nhat?page=${page}`, { timeout: 8000 });
-        const items = res.data?.items || [];
-        metas = items.map(item => this.buildMetaItem(item, catalogType));
-      } catch (err) {
-        console.error('[KKPhim] Lỗi fetch phim-moi-cap-nhat:', err.message);
-      }
-    } else {
-      const catKey = catalogId.replace(/^kk_/, '');
-      const perfect = await this.getPerfectCategories();
-      const items = perfect[catKey] || [];
-
-      if (items.length > 0) {
-        const slicedItems = items.slice(skip, skip + 24);
-        metas = slicedItems.map(item => this.buildMetaItem(item, catalogType));
-      } else {
-        // Fallback sang phimapi nếu category worker trống
-        try {
-          const page = Math.floor(skip / 24) + 1;
-          const res = await axios.get(`${this.phimApiBase}/v1/api/danh-sach/${encodeURIComponent(catKey)}?page=${page}`, { timeout: 8000 });
-          const list = res.data?.data?.items || [];
-          metas = list.map(item => this.buildMetaItem(item, catalogType));
-        } catch (e) {
-          console.warn(`[KKPhim] Fallback fetch error cho ${catKey}:`, e.message);
-        }
-      }
+    try {
+      const res = await axios.get(`${targetEndpoint}${page}`, { timeout: 8000 });
+      const items = res.data?.data?.items || res.data?.items || [];
+      metas = items.map(item => this.buildMetaItem(item, catalogType));
+    } catch (err) {
+      console.error(`[KKPhim] Lỗi getCatalog cho ${catalogId}:`, err.message);
     }
 
     this.cache.set(cacheKey, { data: metas, expireAt: Date.now() + this.cacheTtl });
@@ -205,14 +174,8 @@ class KKPhimService {
         });
       }
 
-      // Poster giữ nguyên ảnh gốc của phim
       const poster = this.formatImageUrl(m.poster_url || m.thumb_url);
-
-      // Background: Sử dụng TMDB Backdrop sắc nét trong chi tiết phim
-      let background = this.formatImageUrl(m.thumb_url || m.poster_url);
-      if (imdbId) {
-        background = `https://images.metahub.space/background/medium/${imdbId}/img`;
-      }
+      const background = this.formatImageUrl(m.thumb_url || m.poster_url);
 
       const result = {
         id: idToUse,
