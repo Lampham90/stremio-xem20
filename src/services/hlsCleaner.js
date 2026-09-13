@@ -6,7 +6,7 @@ class HlsCleaner {
     const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) return content;
 
-    // 1. Master Playlist
+    // 1. Master Playlist (chứa #EXT-X-STREAM-INF)
     if (content.includes('#EXT-X-STREAM-INF')) {
       const result = [];
       for (let i = 0; i < lines.length; i++) {
@@ -16,7 +16,8 @@ class HlsCleaner {
           if (i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
             try {
               const variantUrl = new URL(lines[i + 1], requestUrl).href;
-              result.push(`${host}/m3u8/clean?url=${encodeURIComponent(variantUrl)}`);
+              // Phải có đuôi .m3u8 để ExoPlayer và Stremio nhận diện là HLS
+              result.push(`${host}/m3u8/stream.m3u8?url=${encodeURIComponent(variantUrl)}`);
             } catch (e) {
               result.push(lines[i + 1]);
             }
@@ -30,7 +31,6 @@ class HlsCleaner {
     }
 
     // 2. Media Playlist
-    const convertRegex = /convertv\d+\//gi;
     const pathCounts = new Map();
     const uris = lines.filter(l => !l.startsWith('#'));
     for (const uri of uris) {
@@ -77,7 +77,7 @@ class HlsCleaner {
       const isMainPath = blockPath === mainPath;
       const isLongBlock = segmentsInBlock.length > 40;
       const pathFrequency = (pathCounts.get(blockPath) || 0) / (uris.length || 1);
-      const hasConvert = segmentsInBlock.some(l => convertRegex.test(l));
+      const hasConvert = segmentsInBlock.some(l => /convertv\d+\//i.test(l));
 
       return isMainPath || isLongBlock || pathFrequency > 0.2 || hasConvert;
     });
@@ -86,7 +86,7 @@ class HlsCleaner {
     for (const block of cleanBlocks) {
       for (const line of block) {
         if (!line.startsWith('#')) {
-          const cleanedLine = line.replace(convertRegex, '');
+          const cleanedLine = line.replace(/convertv\d+\//gi, '');
           let absUrl = cleanedLine;
           try {
             absUrl = new URL(cleanedLine, requestUrl).href;
