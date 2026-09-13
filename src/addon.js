@@ -17,6 +17,7 @@ const httpsAgent = new https.Agent({
 });
 
 // 1. MANIFEST (Tên: 'Ghiền Phim', Mô tả: 'Xem phim không quảng cáo')
+// 26 danh mục đồng bộ 100% chuẩn theo thứ tự HomeScreen.kt của App Android Phimkk
 const manifest = {
   id: 'community.ghienphim',
   version: '2.5.0',
@@ -31,19 +32,25 @@ const manifest = {
     {
       type: 'movie',
       id: 'kk_latest',
-      name: '🔥 Phim Mới Cập Nhật',
+      name: '🏆 Top Trending',
       extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
     },
     {
       type: 'movie',
       id: 'kk_phim_chieu_rap',
-      name: '🎬 Phim Chiếu Rạp',
+      name: '🎬 Cine Rạp',
       extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
     },
     {
-      type: 'movie',
+      type: 'series',
+      id: 'kk_anime_nhat',
+      name: '🇯🇵 Anime Hot',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
       id: 'kk_long_tieng',
-      name: '🎙️ Phim Lồng Tiếng',
+      name: '🎙 Lồng Tiếng Cực Mạnh',
       extra: [{ name: 'skip', isRequired: false }]
     },
     {
@@ -54,56 +61,128 @@ const manifest = {
     },
     {
       type: 'series',
-      id: 'kk_bo_han',
-      name: '🇰🇷 Phim Bộ Hàn Quốc',
-      extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'kk_bo_trung',
-      name: '📺 Phim Bộ Trung Quốc',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'kk_bo_au_my',
-      name: '🇺🇸 Phim Bộ Âu Mỹ',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'kk_bo_vn',
-      name: '🇻🇳 Phim Bộ Việt Nam',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'kk_bo_thai',
-      name: '🇹🇭 Phim Bộ Thái Lan',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'kk_bo_nhat',
-      name: '🇯🇵 Phim Bộ Nhật Bản',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'kk_anime_nhat',
-      name: '🇯🇵 Anime Hot',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
       id: 'kk_hh_trung_quoc',
-      name: '🐉 Hoạt Hình 3D Trung Quốc',
+      name: '🐉 HH3D Trung Quốc',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_anime_movie',
+      name: '🍿 Anime Movie Hot',
       extra: [{ name: 'skip', isRequired: false }]
     },
     {
       type: 'movie',
       id: 'kk_kinh_di',
-      name: '👻 Phim Kinh Dị',
+      name: '💀 Đừng coi một mình',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_han',
+      name: '🇰🇷 Drama Hàn Quốc',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_trung',
+      name: '📺 Drama Trung Quốc',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_vn',
+      name: '🇻🇳 Cine Việt Nè Ní',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_han',
+      name: '🇰🇷 Điện ảnh Hàn',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_trung',
+      name: '🇨🇳 Điện ảnh Trung',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_au_my',
+      name: '🇺🇸 Bom tấn Âu Mỹ',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_thai',
+      name: '🇹🇭 Điện ảnh Thái',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_vn',
+      name: '🇻🇳 Drama Việt Nam',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_au_my',
+      name: '🇺🇸 Drama Âu Mỹ',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_nhat',
+      name: '🇯🇵 Drama Nhật Bản',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_thai',
+      name: '🇹🇭 Drama Thái Lan',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_trending_phim_bo',
+      name: '🔥 Trending Phim Bộ',
+      extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_co_trang',
+      name: '📜 Phim Cổ Trang',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_hanh_dong',
+      name: '💥 Hành Động kịch tính',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_hai_huoc',
+      name: '😂 Hài Hước giải trí',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_khoa_hoc',
+      name: '🧠 Khoa Học Đời Sống',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_tam_ly',
+      name: '🎭 Tâm Lý tình cảm',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_tv_show',
+      name: '📺 TV Show hot',
       extra: [{ name: 'skip', isRequired: false }]
     }
   ]
@@ -135,7 +214,7 @@ router.get('/catalog/:type/:id.json', async (req, res) => {
   }
 });
 
-// 3. META (Hiển thị đầy đủ chi tiết phim gốc)
+// 3. META (Hiển thị chi tiết phim gốc)
 router.get('/meta/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
 
@@ -179,47 +258,35 @@ router.get('/meta/:type/:id.json', async (req, res) => {
     if (id.startsWith('xem20:')) {
       const slug = id.replace('xem20:', '');
       const detail = await xem20Client.getMovieDetail(slug);
-      if (!detail) return res.json({ meta: null });
-
-      const meta = {
-        id: `xem20:${slug}`,
-        type: detail.isSeries ? 'series' : 'movie',
-        name: detail.title,
-        genres: detail.genres,
-        poster: detail.poster,
-        background: detail.background,
-        description: detail.overview,
-        releaseInfo: detail.year
-      };
-
-      if (detail.isSeries) {
-        const episodes = [];
-        const sortedEps = Array.from(detail.episodeMap.keys()).sort((a, b) => a - b);
-        for (const epNum of sortedEps) {
-          episodes.push({
-            id: `xem20:${slug}:1:${epNum}`,
-            title: `Tập ${epNum}`,
-            season: 1,
-            episode: epNum,
-            released: new Date().toISOString()
-          });
-        }
-        meta.videos = episodes;
+      if (detail) {
+        return res.json({
+          meta: {
+            id,
+            type: detail.isSeries ? 'series' : 'movie',
+            name: detail.title,
+            poster: detail.poster,
+            background: detail.background,
+            releaseInfo: detail.year ? String(detail.year) : '',
+            description: detail.description,
+            genres: detail.genres,
+            director: detail.director ? [detail.director] : [],
+            cast: detail.cast || []
+          }
+        });
       }
-
-      return res.json({ meta });
     }
 
-    res.json({ meta: null });
+    res.status(404).json({ meta: null });
   } catch (err) {
     console.error('[Addon] Lỗi meta:', err.message);
-    res.json({ meta: null });
+    res.status(500).json({ meta: null });
   }
 });
 
-// 4. STREAM
+// 4. STREAMS (Phát phim chất lượng cao: XEM20 + KKPhim + NguonC)
 router.get('/stream/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
+
   const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
   const proto = isHttps ? 'https' : 'http';
   const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
@@ -228,8 +295,8 @@ router.get('/stream/:type/:id.json', async (req, res) => {
     let targetSlug = null;
     let targetSeason = 1;
     let targetEpisode = 1;
-    let movieName = '';
-    let movieOriginName = '';
+    let movieName = null;
+    let movieOriginName = null;
     let movieYear = null;
     let kkDetail = null;
 
@@ -356,7 +423,7 @@ router.get('/stream/:type/:id.json', async (req, res) => {
     }
 
     // ========================================================
-    // 2. NGUỒN KKPHIM (ĐÃ QUA BỘ LỌC HlsInterceptor SẠCH 100%)
+    // 2. NGUỒN KKPHIM (ĐÃ QUA BỘ LỌC HlsInterceptor SẠCH)
     // ========================================================
     if (kkDetail && kkDetail.episodes && kkDetail.episodes.length > 0) {
       kkDetail.episodes.forEach(server => {
@@ -448,17 +515,18 @@ function getAutoHeaders(targetUrl) {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
       'Accept': '*/*',
       'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
-      'Referer': `${urlObj.origin}/`,
-      'Origin': urlObj.origin
+      'Origin': urlObj.origin,
+      'Referer': `${urlObj.origin}/`
     };
   } catch (e) {
     return {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': '*/*'
     };
   }
 }
 
-// 5. STREAM M3U8 SẠCH (KKPHIM - RESOLVE MASTER PLAYLIST NGAY LẬP TỨC VÀ LỌC BẰNG HlsInterceptor)
+// 5. STREAM M3U8 SẠCH (KKPHIM - RESOLVE MASTER PLAYLIST VÀ LỌC BẰNG HlsInterceptor)
 router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) return res.status(400).send('Missing url');
@@ -484,7 +552,7 @@ router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
 
     let content = upstreamRes.data;
 
-    // Nếu là Master Playlist, tự động resolve variant trực tiếp để ExoPlayer nhận media playlist sạch ngay trong 1 request duy nhất
+    // Nếu là Master Playlist, tự động resolve variant trực tiếp để ExoPlayer nhận media playlist sạch ngay trong 1 request
     if (content.includes('#EXT-X-STREAM-INF')) {
       const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
       for (let i = 0; i < lines.length; i++) {
@@ -749,5 +817,20 @@ router.get('/api/xem20/movie', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// Background keepalive ping đến Render resolver để không bao giờ bị cold start
+setInterval(() => {
+  axios.get('https://ghienphim-ktfd.onrender.com/health').catch(() => {});
+}, 8 * 60 * 1000);
+
+// Khởi tạo preload nhanh danh mục hàng đầu
+setTimeout(async () => {
+  try {
+    console.log('[Init] Tải trước danh mục hàng đầu để nạp sẵn IMDb mapping...');
+    await kkphim.getCatalog('kk_latest', 0);
+    await kkphim.getCatalog('kk_phim_chieu_rap', 0);
+    console.log('[Init] Preload hoàn tất!');
+  } catch (e) {}
+}, 2000);
 
 module.exports = router;

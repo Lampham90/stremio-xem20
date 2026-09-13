@@ -16,7 +16,7 @@ class NguoncService {
     try {
       const res = await axios.get(`${this.apiBase}/api/film/${encodeURIComponent(slug)}`, {
         headers: this.headers,
-        timeout: 6000
+        timeout: 8000
       });
       if (res.data && res.data.status === 'success' && res.data.movie) {
         return res.data;
@@ -31,7 +31,7 @@ class NguoncService {
       const clean = keyword.replace(/\+/g, ' ').trim();
       const res = await axios.get(`${this.apiBase}/api/film/search?keyword=${encodeURIComponent(clean)}`, {
         headers: this.headers,
-        timeout: 6000
+        timeout: 8000
       });
       const items = res.data?.items || res.data?.data?.items || [];
       return Array.isArray(items) ? items : [];
@@ -48,10 +48,10 @@ class NguoncService {
 
     try {
       const res = await axios.get(`${this.resolverBase}/resolve?url=${encodeURIComponent(embedUrl)}`, {
-        timeout: 10000
+        timeout: 30000
       });
       if (res.data && res.data.m3u8) {
-        this.cache.set(cacheKey, { m3u8: res.data.m3u8, expireAt: Date.now() + 30 * 60 * 1000 });
+        this.cache.set(cacheKey, { m3u8: res.data.m3u8, expireAt: Date.now() + 60 * 60 * 1000 });
         return res.data.m3u8;
       }
     } catch (err) {

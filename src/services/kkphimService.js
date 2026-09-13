@@ -8,25 +8,38 @@ class KKPhimService {
     this.cache = new Map();
     this.cacheTtl = 5 * 60 * 1000;
 
-    // Lưu ánh xạ 2 chiều IMDb ID <-> KKPhim slug để Stremio liên kết với Penguplay và Cinemeta
+    // Lưu ánh xạ 2 chiều IMDb ID <-> KKPhim slug để liên kết hoàn hảo với Cinemeta và Penguplay
     this.imdbToSlugMap = new Map();
     this.slugToImdbMap = new Map();
 
-    // Bản đồ danh mục sang endpoint chính thức của phimapi.com (luôn ổn định 100%)
+    // 26 danh mục đồng bộ 100% chuẩn theo thứ tự HomeScreen.kt của App Android Phimkk
     this.catEndpoints = {
       kk_latest: 'https://phimapi.com/danh-sach/phim-moi-cap-nhat?page=',
-      kk_phim_chieu_rap: 'https://phimapi.com/v1/api/danh-sach/phim-le?page=',
-      kk_long_tieng: 'https://phimapi.com/v1/api/danh-sach/phim-bo?page=',
-      kk_thuyet_minh: 'https://phimapi.com/v1/api/danh-sach/phim-le?page=',
+      kk_phim_chieu_rap: 'https://phimapi.com/v1/api/danh-sach/phim-chieu-rap?page=',
+      kk_anime_nhat: 'https://phimapi.com/v1/api/danh-sach/hoat-hinh?page=',
+      kk_long_tieng: 'https://phimapi.com/v1/api/danh-sach/phim-long-tieng?page=',
+      kk_thuyet_minh: 'https://phimapi.com/v1/api/danh-sach/phim-thuyet-minh?page=',
+      kk_hh_trung_quoc: 'https://phimapi.com/v1/api/quoc-gia/trung-quoc?page=',
+      kk_anime_movie: 'https://phimapi.com/v1/api/danh-sach/hoat-hinh?page=',
+      kk_kinh_di: 'https://phimapi.com/v1/api/the-loai/kinh-di?page=',
       kk_bo_han: 'https://phimapi.com/v1/api/quoc-gia/han-quoc?page=',
       kk_bo_trung: 'https://phimapi.com/v1/api/quoc-gia/trung-quoc?page=',
-      kk_bo_au_my: 'https://phimapi.com/v1/api/quoc-gia/au-my?page=',
+      kk_le_vn: 'https://phimapi.com/v1/api/quoc-gia/viet-nam?page=',
+      kk_le_han: 'https://phimapi.com/v1/api/quoc-gia/han-quoc?page=',
+      kk_le_trung: 'https://phimapi.com/v1/api/quoc-gia/trung-quoc?page=',
+      kk_le_au_my: 'https://phimapi.com/v1/api/quoc-gia/au-my?page=',
+      kk_le_thai: 'https://phimapi.com/v1/api/quoc-gia/thai-lan?page=',
       kk_bo_vn: 'https://phimapi.com/v1/api/quoc-gia/viet-nam?page=',
-      kk_bo_thai: 'https://phimapi.com/v1/api/quoc-gia/thai-lan?page=',
+      kk_bo_au_my: 'https://phimapi.com/v1/api/quoc-gia/au-my?page=',
       kk_bo_nhat: 'https://phimapi.com/v1/api/quoc-gia/nhat-ban?page=',
-      kk_anime_nhat: 'https://phimapi.com/v1/api/danh-sach/hoat-hinh?page=',
-      kk_hh_trung_quoc: 'https://phimapi.com/v1/api/danh-sach/hoat-hinh?page=',
-      kk_kinh_di: 'https://phimapi.com/v1/api/the-loai/kinh-di?page='
+      kk_bo_thai: 'https://phimapi.com/v1/api/quoc-gia/thai-lan?page=',
+      kk_trending_phim_bo: 'https://phimapi.com/v1/api/danh-sach/phim-bo?page=',
+      kk_co_trang: 'https://phimapi.com/v1/api/the-loai/co-trang?page=',
+      kk_hanh_dong: 'https://phimapi.com/v1/api/the-loai/hanh-dong?page=',
+      kk_hai_huoc: 'https://phimapi.com/v1/api/the-loai/hai-huoc?page=',
+      kk_khoa_hoc: 'https://phimapi.com/v1/api/the-loai/vien-tuong?page=',
+      kk_tam_ly: 'https://phimapi.com/v1/api/the-loai/tam-ly?page=',
+      kk_tv_show: 'https://phimapi.com/v1/api/danh-sach/tv-shows?page='
     };
   }
 
@@ -49,21 +62,23 @@ class KKPhimService {
         if (parsed.id && parsed.id.startsWith('tt')) return parsed.id;
       } catch (e) {}
     }
-    if (item.imdb?.id && item.imdb.id.startsWith('tt')) {
+    if (item.imdb?.id && typeof item.imdb.id === 'string' && item.imdb.id.startsWith('tt')) {
       return item.imdb.id;
     }
-    if (item.imdbId && item.imdbId.startsWith('tt')) {
+    if (item.imdbId && typeof item.imdbId === 'string' && item.imdbId.startsWith('tt')) {
       return item.imdbId;
     }
     return null;
   }
 
   buildMetaItem(item, catalogType) {
+    const slug = item.slug || '';
     const imdbId = this.extractImdbId(item);
-    const finalId = imdbId || `kk:${item.slug}`;
-    if (imdbId) {
-      this.imdbToSlugMap.set(imdbId, item.slug);
-      this.slugToImdbMap.set(item.slug, imdbId);
+    const finalId = imdbId || `kk:${slug}`;
+
+    if (imdbId && slug) {
+      this.imdbToSlugMap.set(imdbId, slug);
+      this.slugToImdbMap.set(slug, imdbId);
     }
 
     const poster = this.formatImageUrl(item.poster_url || item.poster || item.thumb_url);
@@ -71,6 +86,7 @@ class KKPhimService {
 
     return {
       id: finalId,
+      slug: slug,
       name: item.name,
       type: catalogType || (item.type === 'series' ? 'series' : 'movie'),
       poster,
@@ -85,8 +101,14 @@ class KKPhimService {
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expireAt > Date.now()) return cached.data;
 
-    const isSeriesCatalog = catalogId.startsWith('kk_bo_') || catalogId === 'kk_anime_nhat' || catalogId === 'kk_hh_trung_quoc';
-    const catalogType = isSeriesCatalog ? 'series' : 'movie';
+    const seriesCatalogs = new Set([
+      'kk_anime_nhat', 'kk_long_tieng', 'kk_hh_trung_quoc',
+      'kk_bo_han', 'kk_bo_trung', 'kk_bo_vn', 'kk_bo_au_my',
+      'kk_bo_nhat', 'kk_bo_thai', 'kk_trending_phim_bo',
+      'kk_co_trang', 'kk_tv_show'
+    ]);
+    const isSeries = seriesCatalogs.has(catalogId);
+    const catalogType = isSeries ? 'series' : 'movie';
 
     let metas = [];
     const targetEndpoint = this.catEndpoints[catalogId] || `${this.phimApiBase}/v1/api/danh-sach/${catalogId.replace(/^kk_/, '')}?page=`;
@@ -216,10 +238,12 @@ class KKPhimService {
         const searchResults = await this.search(cm.name);
         if (searchResults.length > 0) {
           const match = searchResults[0];
-          const slug = match.id.replace('kk:', '');
-          this.imdbToSlugMap.set(imdbId, slug);
-          this.slugToImdbMap.set(slug, imdbId);
-          return slug;
+          const foundSlug = match.slug || (match.id.startsWith('kk:') ? match.id.replace('kk:', '') : null);
+          if (foundSlug && !foundSlug.startsWith('tt')) {
+            this.imdbToSlugMap.set(imdbId, foundSlug);
+            this.slugToImdbMap.set(foundSlug, imdbId);
+            return foundSlug;
+          }
         }
       }
     } catch (e) {
