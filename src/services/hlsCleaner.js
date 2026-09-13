@@ -16,7 +16,6 @@ class HlsCleaner {
           if (i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
             try {
               const variantUrl = new URL(lines[i + 1], requestUrl).href;
-              // Phải có đuôi .m3u8 để ExoPlayer và Stremio nhận diện là HLS
               result.push(`${host}/m3u8/stream.m3u8?url=${encodeURIComponent(variantUrl)}`);
             } catch (e) {
               result.push(lines[i + 1]);
@@ -31,8 +30,8 @@ class HlsCleaner {
     }
 
     // 2. Media Playlist
-    const pathCounts = new Map();
     const uris = lines.filter(l => !l.startsWith('#'));
+    const pathCounts = new Map();
     for (const uri of uris) {
       const p = uri.includes('/') ? uri.substring(0, uri.lastIndexOf('/')) : '';
       pathCounts.set(p, (pathCounts.get(p) || 0) + 1);
@@ -56,7 +55,7 @@ class HlsCleaner {
       if (line.startsWith('#EXT-X-DISCONTINUITY')) {
         isHeader = false;
         if (currentBlock.length > 0) blocks.push(currentBlock);
-        currentBlock = [line];
+        currentBlock = [];
       } else if (isHeader && line.startsWith('#EXT') && !line.startsWith('#EXTINF')) {
         header.push(line);
       } else {
@@ -68,6 +67,7 @@ class HlsCleaner {
     }
     if (currentBlock.length > 0) blocks.push(currentBlock);
 
+    // Lọc bỏ triệt để các khối quảng cáo chèn ngang
     const cleanBlocks = blocks.filter(block => {
       const segmentsInBlock = block.filter(l => !l.startsWith('#'));
       if (segmentsInBlock.length === 0) return true;
@@ -79,6 +79,7 @@ class HlsCleaner {
       const pathFrequency = (pathCounts.get(blockPath) || 0) / (uris.length || 1);
       const hasConvert = segmentsInBlock.some(l => /convertv\d+\//i.test(l));
 
+      // Khối quảng cáo riêng biệt (như /v8/.../segment_0001.ts) có path lạ và ngắn -> bị loại bỏ
       return isMainPath || isLongBlock || pathFrequency > 0.2 || hasConvert;
     });
 
@@ -86,6 +87,7 @@ class HlsCleaner {
     for (const block of cleanBlocks) {
       for (const line of block) {
         if (!line.startsWith('#')) {
+          // Xóa prefix convertv* để gọi trực tiếp phân đoạn video sạch gốc
           const cleanedLine = line.replace(/convertv\d+\//gi, '');
           let absUrl = cleanedLine;
           try {
@@ -104,28 +106,31 @@ class HlsCleaner {
           } catch (e) {
             finalLines.push(line);
           }
-        } else {
+        } else if (!line.startsWith('#EXT-X-DISCONTINUITY')) {
+          // Loại bỏ toàn bộ tag DISCONTINUITY của quảng cáo để trình phát không bị khựng lại hay xoay vòng
           finalLines.push(line);
         }
       }
     }
 
+    if (content.includes('#EXT-X-ENDLIST')) finalLines.push('#EXT-X-ENDLIST');
+    return finalLines.join('\n');
+  }
+
+  cleanNguoncM3u8(rawM3u8, embedUrl, host) {
+    if (!rawM3u8 || typeof rawM3u8 !== 'string') return rawM3u8;
+    const embedOrigin = new URL(embedUrl).origin;
+    const lines = rawM3u8.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     const result = [];
-    for (const line of finalLines) {
-      if (line === '#EXT-X-DISCONTINUITY' && result[result.length - 1] === '#EXT-X-DISCONTINUITY') continue;
-      result.push(line);
-    }
 
-    while (
-      result.length > 0 &&
-      (result[result.length - 1].startsWith('#EXT-X-DISCONTINUITY') ||
-        result[result.length - 1].startsWith('#EXT-X-KEY') ||
-        result[result.length - 1].startsWith('#EXTINF'))
-    ) {
-      result.pop();
+    for (const line of lines) {
+      if (!line.startsWith('#')) {
+        // Rewrite tất cả các phân đoạn sang segment proxy có kèm Referer để tránh lỗi 403 Forbidden
+        result.push(`${host}/m3u8/segment.ts?url=${encodeURIComponent(line)}&ref=${encodeURIComponent(embedOrigin)}`);
+      } else {
+        result.push(line);
+      }
     }
-
-    if (content.includes('#EXT-X-ENDLIST')) result.push('#EXT-X-ENDLIST');
     return result.join('\n');
   }
 }
