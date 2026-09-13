@@ -1,44 +1,26 @@
 const { URL } = require('url');
 
 class HlsCleaner {
-  cleanM3u8(requestUrl, content, host) {
+  /**
+   * Bộ lọc HLS làm sạch quảng cáo tái hiện 100% logic HlsInterceptor.kt
+   */
+  filterSmartByBlock(requestUrlStr, content) {
     if (!content || typeof content !== 'string') return content;
     const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) return content;
 
-    // 1. Master Playlist (chứa #EXT-X-STREAM-INF)
-    if (content.includes('#EXT-X-STREAM-INF')) {
-      const result = [];
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.startsWith('#EXT-X-STREAM-INF')) {
-          result.push(line);
-          if (i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
-            try {
-              const variantUrl = new URL(lines[i + 1], requestUrl).href;
-              result.push(`${host}/m3u8/stream.m3u8?url=${encodeURIComponent(variantUrl)}`);
-            } catch (e) {
-              result.push(lines[i + 1]);
-            }
-            i++;
-          }
-        } else {
-          result.push(line);
-        }
-      }
-      return result.join('\n');
-    }
+    const convertRegex = /convertv\d+\//gi;
 
-    // 2. Media Playlist
-    const uris = lines.filter(l => !l.startsWith('#'));
+    // 1. Thống kê tần suất xuất hiện của các path phân đoạn
     const pathCounts = new Map();
+    const uris = lines.filter(l => !l.startsWith('#'));
     for (const uri of uris) {
       const p = uri.includes('/') ? uri.substring(0, uri.lastIndexOf('/')) : '';
       pathCounts.set(p, (pathCounts.get(p) || 0) + 1);
     }
 
     let mainPath = '';
-    let maxCount = 0;
+    let maxCount = -1;
     for (const [p, c] of pathCounts.entries()) {
       if (c > maxCount) {
         maxCount = c;
@@ -46,6 +28,7 @@ class HlsCleaner {
       }
     }
 
+    // 2. Chia các phân đoạn thành các Block phân tách bởi #EXT-X-DISCONTINUITY
     const header = [];
     const blocks = [];
     let currentBlock = [];
@@ -55,7 +38,7 @@ class HlsCleaner {
       if (line.startsWith('#EXT-X-DISCONTINUITY')) {
         isHeader = false;
         if (currentBlock.length > 0) blocks.push(currentBlock);
-        currentBlock = [];
+        currentBlock = [line];
       } else if (isHeader && line.startsWith('#EXT') && !line.startsWith('#EXTINF')) {
         header.push(line);
       } else {
@@ -67,7 +50,7 @@ class HlsCleaner {
     }
     if (currentBlock.length > 0) blocks.push(currentBlock);
 
-    // Lọc bỏ triệt để các khối quảng cáo chèn ngang
+    // 3. Lọc bỏ các Block quảng cáo chèn ngang
     const cleanBlocks = blocks.filter(block => {
       const segmentsInBlock = block.filter(l => !l.startsWith('#'));
       if (segmentsInBlock.length === 0) return true;
@@ -79,26 +62,27 @@ class HlsCleaner {
       const pathFrequency = (pathCounts.get(blockPath) || 0) / (uris.length || 1);
       const hasConvert = segmentsInBlock.some(l => /convertv\d+\//i.test(l));
 
-      // Khối quảng cáo riêng biệt (như /v8/.../segment_0001.ts) có path lạ và ngắn -> bị loại bỏ
+      // Giữ lại block chính hoặc block video gốc đã chuyển đổi, loại bỏ block quảng cáo riêng biệt
       return isMainPath || isLongBlock || pathFrequency > 0.2 || hasConvert;
     });
 
+    // 4. Xử lý xóa bỏ convertv* để trỏ về phân đoạn video sạch gốc
     const finalLines = [...header];
     for (const block of cleanBlocks) {
       for (const line of block) {
         if (!line.startsWith('#')) {
-          // Xóa prefix convertv* để gọi trực tiếp phân đoạn video sạch gốc
-          const cleanedLine = line.replace(/convertv\d+\//gi, '');
-          let absUrl = cleanedLine;
+          // Xóa bỏ convertv* khỏi text (ví dụ: convertv8/dTJR6KN5.ts -> dTJR6KN5.ts)
+          const cleanedLine = line.replace(convertRegex, '');
+          let absoluteUrl = cleanedLine;
           try {
-            absUrl = new URL(cleanedLine, requestUrl).href;
+            absoluteUrl = new URL(cleanedLine, requestUrlStr).href;
           } catch (e) {}
-          finalLines.push(absUrl);
+          finalLines.push(absoluteUrl);
         } else if (line.startsWith('#EXT-X-KEY')) {
           try {
             const keyMatch = line.match(/URI="([^"]+)"/);
             if (keyMatch) {
-              const absKey = new URL(keyMatch[1], requestUrl).href;
+              const absKey = new URL(keyMatch[1], requestUrlStr).href;
               finalLines.push(line.replace(keyMatch[1], absKey));
             } else {
               finalLines.push(line);
@@ -106,15 +90,35 @@ class HlsCleaner {
           } catch (e) {
             finalLines.push(line);
           }
-        } else if (!line.startsWith('#EXT-X-DISCONTINUITY')) {
-          // Loại bỏ toàn bộ tag DISCONTINUITY của quảng cáo để trình phát không bị khựng lại hay xoay vòng
+        } else {
           finalLines.push(line);
         }
       }
     }
 
-    if (content.includes('#EXT-X-ENDLIST')) finalLines.push('#EXT-X-ENDLIST');
-    return finalLines.join('\n');
+    // 5. Khử trùng lặp #EXT-X-DISCONTINUITY liên tiếp
+    const result = [];
+    for (const line of finalLines) {
+      if (line === '#EXT-X-DISCONTINUITY' && result[result.length - 1] === '#EXT-X-DISCONTINUITY') continue;
+      result.push(line);
+    }
+
+    // Dọn dẹp các tag thừa ở cuối file
+    while (
+      result.length > 0 &&
+      (result[result.length - 1].startsWith('#EXT-X-DISCONTINUITY') ||
+        result[result.length - 1].startsWith('#EXT-X-KEY') ||
+        result[result.length - 1].startsWith('#EXTINF'))
+    ) {
+      result.pop();
+    }
+
+    if (content.includes('#EXT-X-ENDLIST')) result.push('#EXT-X-ENDLIST');
+    return result.join('\n');
+  }
+
+  cleanM3u8(requestUrl, content) {
+    return this.filterSmartByBlock(requestUrl, content);
   }
 
   cleanNguoncM3u8(rawM3u8, embedUrl, host) {
@@ -125,7 +129,6 @@ class HlsCleaner {
 
     for (const line of lines) {
       if (!line.startsWith('#')) {
-        // Rewrite tất cả các phân đoạn sang segment proxy có kèm Referer để tránh lỗi 403 Forbidden
         result.push(`${host}/m3u8/segment.ts?url=${encodeURIComponent(line)}&ref=${encodeURIComponent(embedOrigin)}`);
       } else {
         result.push(line);

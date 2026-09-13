@@ -19,7 +19,7 @@ const httpsAgent = new https.Agent({
 // 1. MANIFEST (Tên: 'Ghiền Phim', Mô tả: 'Xem phim không quảng cáo')
 const manifest = {
   id: 'community.ghienphim',
-  version: '2.2.0',
+  version: '2.3.0',
   name: 'Ghiền Phim',
   description: 'Xem phim không quảng cáo',
   logo: 'https://xem20.net/storage/logo/favicon_xem14.png',
@@ -102,80 +102,8 @@ const manifest = {
     },
     {
       type: 'movie',
-      id: 'kk_anime_movie',
-      name: '🍿 Anime Movie Hot',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_le_vn',
-      name: '🇻🇳 Phim Lẻ Việt Nam',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_le_au_my',
-      name: '🇺🇸 Bom Tấn Âu Mỹ',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_le_han',
-      name: '🇰🇷 Điện Ảnh Hàn Quốc',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_le_trung',
-      name: '🇨🇳 Điện Ảnh Trung Quốc',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_le_thai',
-      name: '🇹🇭 Điện Ảnh Thái Lan',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_hanh_dong',
-      name: '💥 Phim Hành Động',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
       id: 'kk_kinh_di',
-      name: '💀 Phim Kinh Dị',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_hai_huoc',
-      name: '😂 Phim Hài Hước',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'kk_co_trang',
-      name: '📜 Phim Cổ Trang',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_khoa_hoc',
-      name: '🧠 Phim Khoa Học',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'movie',
-      id: 'kk_tam_ly',
-      name: '🎭 Phim Tâm Lý',
-      extra: [{ name: 'skip', isRequired: false }]
-    },
-    {
-      type: 'series',
-      id: 'kk_tv_show',
-      name: '📺 TV Shows',
+      name: '👻 Phim Kinh Dị',
       extra: [{ name: 'skip', isRequired: false }]
     }
   ]
@@ -186,15 +114,14 @@ router.get('/manifest.json', (req, res) => {
 });
 
 // 2. CATALOG
-router.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
+router.get('/catalog/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
-  const extraStr = req.params.extra || '';
-  const searchParams = new URLSearchParams(extraStr);
-  const search = searchParams.get('search') || req.query.search;
-  const skip = parseInt(searchParams.get('skip') || req.query.skip || '0', 10);
+  const skip = parseInt(req.query.skip || '0', 10);
+  const search = req.query.search;
 
   try {
     let metas = [];
+
     if (search) {
       metas = await kkphim.search(search);
     } else {
@@ -208,21 +135,19 @@ router.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
   }
 });
 
-// 3. META
+// 3. META (Để TMDB / Cinemeta xử lý chi tiết phim & banner hình ảnh siêu nét)
 router.get('/meta/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
 
   try {
-    let targetSlug = null;
-
-    if (id.startsWith('kk:')) {
-      targetSlug = id.replace('kk:', '');
-    } else if (id.startsWith('tt')) {
-      targetSlug = await kkphim.findSlugByImdb(id);
+    // Nếu là ID chuẩn IMDb (tt...) -> Để mặc định cho TMDB / Cinemeta của Stremio xử lý để có backdrop và poster 4K siêu nét
+    if (id.startsWith('tt')) {
+      return res.json({ meta: null });
     }
 
-    if (targetSlug) {
-      const detail = await kkphim.getMovieDetail(targetSlug);
+    if (id.startsWith('kk:')) {
+      const slug = id.replace('kk:', '');
+      const detail = await kkphim.getMovieDetail(slug);
       if (detail) {
         const meta = {
           id: id,
@@ -348,14 +273,14 @@ router.get('/stream/:type/:id.json', async (req, res) => {
       if (kkDetail) {
         movieName = kkDetail.title;
         if (!movieOriginName) movieOriginName = kkDetail.originTitle || '';
-        if (!movieYear) movieYear = kkDetail.year;
+        if (!movieYear && kkDetail.year) movieYear = parseInt(kkDetail.year, 10);
       }
     }
 
     const streams = [];
 
     // ========================================================
-    // 1. NGUỒN XEM20 (ƯU TIÊN SỐ 1 - 4K UHD & 1080P FHD)
+    // 1. NGUỒN XEM20 (ƯU TIÊN HÀNG ĐẦU 4K -> 1080P)
     // ========================================================
     try {
       const searchQueries = [];
@@ -429,7 +354,7 @@ router.get('/stream/:type/:id.json', async (req, res) => {
     }
 
     // ========================================================
-    // 2. NGUỒN KKPHIM (DUY NHẤT LUỒNG ĐÃ QUA BỘ LỌC SẠCH)
+    // 2. NGUỒN KKPHIM (ĐÃ QUA BỘ LỌC HlsInterceptor SẠCH 100%)
     // ========================================================
     if (kkDetail && kkDetail.episodes && kkDetail.episodes.length > 0) {
       kkDetail.episodes.forEach(server => {
@@ -441,7 +366,6 @@ router.get('/stream/:type/:id.json', async (req, res) => {
         }) || serverData[targetEpisode - 1] || serverData[0];
 
         if (ep && ep.link_m3u8) {
-          // Luồng M3U8 đã qua bộ lọc sạch (loại bỏ quảng cáo & convertv)
           const cleanM3u8Url = `${host}/m3u8/stream.m3u8?url=${encodeURIComponent(ep.link_m3u8)}`;
           const isDub = sName.toLowerCase().includes('lồng tiếng') || sName.toLowerCase().includes('thuyết minh');
 
@@ -449,16 +373,7 @@ router.get('/stream/:type/:id.json', async (req, res) => {
             _priority: isDub ? 5 : 6,
             name: `KKPhim 🌟 [${sName.toUpperCase()}]`,
             title: `${movieName} - Tập ${targetEpisode}\n🌟 Server VIP (${sName})`,
-            url: cleanM3u8Url,
-            behaviorHints: {
-              notWebReady: true,
-              proxyHeaders: {
-                request: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                  'Referer': 'https://phimapi.com/'
-                }
-              }
-            }
+            url: cleanM3u8Url
           });
         }
       });
@@ -523,14 +438,28 @@ router.get('/stream/:type/:id.json', async (req, res) => {
   }
 });
 
-// 5. STREAM M3U8 SẠCH (KKPHIM)
+// Helper tạo Headers tương thích 100% với AutoHeaderInterceptor.kt
+function getAutoHeaders(targetUrl) {
+  try {
+    const urlObj = new URL(targetUrl);
+    return {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept': '*/*',
+      'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Referer': `${urlObj.origin}/`,
+      'Origin': urlObj.origin
+    };
+  } catch (e) {
+    return {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    };
+  }
+}
+
+// 5. STREAM M3U8 SẠCH (KKPHIM - RESOLVE MASTER PLAYLIST NGAY LẬP TỨC VÀ LỌC BẰNG HlsInterceptor)
 router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) return res.status(400).send('Missing url');
-
-  const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
-  const proto = isHttps ? 'https' : 'http';
-  const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
@@ -543,20 +472,40 @@ router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
   }
 
   try {
-    const upstreamRes = await axios.get(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Referer': targetUrl
-      },
+    let m3u8Url = targetUrl;
+    const upstreamRes = await axios.get(m3u8Url, {
+      headers: getAutoHeaders(m3u8Url),
       timeout: 10000,
-      responseType: 'text'
+      responseType: 'text',
+      agent: httpsAgent
     });
 
-    const cleanContent = hlsCleaner.cleanM3u8(targetUrl, upstreamRes.data, host);
+    let content = upstreamRes.data;
+
+    // Nếu là Master Playlist, tự động resolve variant trực tiếp để ExoPlayer nhận media playlist sạch ngay trong 1 request duy nhất
+    if (content.includes('#EXT-X-STREAM-INF')) {
+      const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('#EXT-X-STREAM-INF') && i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
+          const variantUrl = new URL(lines[i + 1], m3u8Url).href;
+          const varRes = await axios.get(variantUrl, {
+            headers: getAutoHeaders(variantUrl),
+            timeout: 10000,
+            responseType: 'text',
+            agent: httpsAgent
+          });
+          m3u8Url = variantUrl;
+          content = varRes.data;
+          break;
+        }
+      }
+    }
+
+    const cleanContent = hlsCleaner.cleanM3u8(m3u8Url, content);
     res.end(cleanContent);
   } catch (err) {
     console.error('[M3U8 Clean] Lỗi tải m3u8:', err.message);
-    res.redirect(302, targetUrl);
+    res.status(502).send('Error fetching M3U8 stream');
   }
 });
 
@@ -587,7 +536,7 @@ router.all(['/m3u8/nguonc.m3u8', '/clean/nguonc.m3u8'], async (req, res) => {
     res.end(cleanContent);
   } catch (err) {
     console.error('[NguonC Clean] Lỗi:', err.message);
-    res.status(502).send('Error resolving embed');
+    res.status(502).send('Error processing NguonC stream');
   }
 });
 
@@ -638,62 +587,46 @@ router.get('/play/:id', async (req, res) => {
   const downloadLinkId = req.params.id;
   const mode = req.query.mode || 'direct';
 
+  if (!downloadLinkId) {
+    return res.status(400).send('Missing downloadLinkId');
+  }
+
   try {
-    const directStreamUrl = await xem20Client.resolveStreamUrl(downloadLinkId);
-
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', '*');
-
-    if (mode === 'direct') {
-      return res.redirect(307, directStreamUrl);
+    const playUrl = await xem20Client.getPlayUrl(downloadLinkId);
+    if (!playUrl) {
+      return res.status(404).send('Stream link expired or not found');
     }
 
-    const clientRange = req.headers.range;
-    const streamHeaders = {
-      'User-Agent': config.xem20.userAgent,
-      'Referer': config.xem20.baseUrl + '/',
-      'Connection': 'keep-alive'
-    };
-
-    if (clientRange) {
-      streamHeaders['Range'] = clientRange;
-    }
-
-    const upstreamReq = https.request(directStreamUrl, {
-      method: 'GET',
-      headers: streamHeaders,
-      agent: httpsAgent
-    }, (upstreamRes) => {
-      res.statusCode = upstreamRes.statusCode;
-      const copyHeaders = [
-        'content-type',
-        'content-length',
-        'content-range',
-        'accept-ranges',
-        'last-modified',
-        'etag'
-      ];
-      copyHeaders.forEach((h) => {
-        if (upstreamRes.headers[h]) {
-          res.setHeader(h, upstreamRes.headers[h]);
-        }
+    if (mode === 'proxy') {
+      const upstreamReq = https.request(playUrl, {
+        method: req.method,
+        headers: {
+          ...req.headers,
+          host: new URL(playUrl).host,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        agent: httpsAgent
+      }, (upstreamRes) => {
+        res.writeHead(upstreamRes.statusCode, upstreamRes.headers);
+        upstreamRes.pipe(res);
       });
-      upstreamRes.pipe(res);
-    });
 
-    upstreamReq.on('error', (e) => {
-      console.error(`[Play #${downloadLinkId}] [Proxy Error]:`, e.message);
-      if (!res.headersSent) res.status(502).end();
-    });
+      upstreamReq.on('error', (e) => {
+        console.error('[Proxy Error]:', e.message);
+        if (!res.headersSent) res.redirect(302, playUrl);
+      });
 
-    req.on('close', () => {
-      upstreamReq.destroy();
-    });
+      req.on('close', () => {
+        upstreamReq.destroy();
+      });
 
-    upstreamReq.end();
+      upstreamReq.end();
+    } else {
+      res.redirect(302, playUrl);
+    }
   } catch (err) {
-    console.error(`[Play #${downloadLinkId}] Lỗi lấy stream:`, err.message);
-    res.status(500).send('Không thể phát video này từ máy chủ xem20.');
+    console.error('[Play Endpoint] Lỗi phân giải stream:', err.message);
+    res.status(500).send('Internal Server Error');
   }
 });
 
@@ -701,108 +634,116 @@ router.get('/play/:id', async (req, res) => {
 router.get('/api/xem20/movie', async (req, res) => {
   const { title, originTitle, year } = req.query;
   if (!title && !originTitle) {
-    return res.status(400).json({ success: false, message: 'Missing title or originTitle' });
+    return res.json({ success: false, message: 'Thiếu query title/originTitle' });
   }
-
-  const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
-  const proto = isHttps ? 'https' : 'http';
-  const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
 
   try {
     const searchQueries = [];
     if (originTitle) searchQueries.push(originTitle.trim());
     if (title && title !== originTitle) searchQueries.push(title.trim());
 
-    let foundSlug = null;
+    let matchSlug = null;
     for (const q of searchQueries) {
       if (!q || q.length < 2) continue;
       const results = await xem20Client.search(q);
       if (results && results.length > 0) {
         let match = results[0];
         if (year) {
-          const yMatch = results.find(r => r.description && r.description.includes(String(year)));
-          if (yMatch) match = yMatch;
+          const yearMatch = results.find(r => r.description && r.description.includes(String(year)));
+          if (yearMatch) match = yearMatch;
         }
-        foundSlug = match.slug;
+        matchSlug = match.slug;
         break;
       }
     }
 
-    if (!foundSlug) {
-      return res.json({ success: false, servers: [] });
+    if (!matchSlug) {
+      return res.json({ success: false, message: 'Không tìm thấy phim trên Xem20' });
     }
 
-    const detail = await xem20Client.getMovieDetail(foundSlug);
-    if (!detail || !detail.releases || detail.releases.length === 0) {
-      return res.json({ success: false, servers: [] });
+    const detail = await xem20Client.getMovieDetail(matchSlug);
+    if (!detail) {
+      return res.json({ success: false, message: 'Không lấy được chi tiết phim Xem20' });
+    }
+
+    const host = req.headers.host ? `${req.protocol}://${req.headers.host}` : config.baseUrl;
+
+    function formatServerLabel(rel) {
+      const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('4K') || rel.name.includes('2160p');
+      const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
+      const quality = is4K ? '4KUHD' : (is1080 ? '1080p' : '720p');
+
+      const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('TM.') || rel.name.includes('Thuyết Minh');
+      const isSub = rel.metaText.includes('Phụ Đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub') || rel.name.includes('Sub');
+
+      let audioInfo = '';
+      if (isDub && isSub) audioInfo = ' (thuyết minh + vietsub)';
+      else if (isDub) audioInfo = ' (thuyết minh)';
+      else if (isSub) audioInfo = ' (vietsub)';
+
+      return `${quality}${audioInfo}`;
+    }
+
+    function getQualityPriority(rel) {
+      const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('4K') || rel.name.includes('2160p');
+      const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
+      if (is4K) return 1;
+      if (is1080) return 2;
+      return 3;
     }
 
     const servers = [];
-    if (detail.isSeries && detail.episodeMap && detail.episodeMap.size > 0) {
-      const sortedEps = Array.from(detail.episodeMap.keys()).sort((a, b) => a - b);
-      const releaseTypes = new Map();
+    detail.releases.forEach((rel, index) => {
+      const serverLabel = formatServerLabel(rel);
+      const priority = getQualityPriority(rel);
 
-      for (const epNum of sortedEps) {
-        const rels = detail.episodeMap.get(epNum) || [];
-        for (const rel of rels) {
-          const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('4K') || rel.name.includes('2160p');
-          const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
-          const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('Thuyết Minh');
-          const isSub = rel.metaText.includes('Phụ đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub');
-
-          let sName = is4K ? '4K UHD' : '1080P FHD';
-          if (isDub && !isSub) sName += ' (TM)';
-          else if (isSub && !isDub) sName += ' (Sub)';
-
-          if (!releaseTypes.has(sName)) releaseTypes.set(sName, []);
-          releaseTypes.get(sName).push({
-            name: `Tập ${epNum}`,
-            slug: `tap-${epNum}`,
-            linkM3u8: `${host}/play/${rel.downloadLinkId}?mode=direct`
-          });
-        }
-      }
-
-      for (const [sName, epList] of releaseTypes.entries()) {
-        servers.push({
-          serverName: sName,
-          serverData: epList
-        });
-      }
-    } else {
-      detail.releases.forEach(rel => {
-        const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('4K') || rel.name.includes('2160p');
-        const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
-        const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('Thuyết Minh');
-        const isSub = rel.metaText.includes('Phụ đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub');
-
-        let qualityTag = is4K ? '4K UHD' : (is1080 ? '1080P FHD' : 'HD 720P');
-        let audioTag = '';
-        if (isDub && isSub) audioTag = 'Thuyết Minh + Vietsub';
-        else if (isDub) audioTag = 'Thuyết Minh';
-        else if (isSub) audioTag = 'Vietsub';
-
-        const serverName = `${qualityTag}${audioTag ? ' (' + audioTag + ')' : ''}`;
-
-        servers.push({
-          serverName: serverName,
-          serverData: [
-            {
-              name: 'Full',
-              slug: 'full',
-              linkM3u8: `${host}/play/${rel.downloadLinkId}?mode=direct`
-            }
-          ]
-        });
+      servers.push({
+        _priority: priority,
+        server_name: `${serverLabel} [CDN]`,
+        server_data: [
+          {
+            name: rel.episode ? `Tập ${rel.episode}` : 'Full',
+            slug: `ep-${rel.episode || 1}-cdn`,
+            filename: rel.name,
+            link_embed: '',
+            link_m3u8: `${host}/play/${rel.downloadLinkId}?mode=direct`
+          }
+        ]
       });
-    }
+
+      servers.push({
+        _priority: priority + 0.5,
+        server_name: `${serverLabel} [Bypass]`,
+        server_data: [
+          {
+            name: rel.episode ? `Tập ${rel.episode}` : 'Full',
+            slug: `ep-${rel.episode || 1}-proxy`,
+            filename: rel.name,
+            link_embed: '',
+            link_m3u8: `${host}/play/${rel.downloadLinkId}?mode=proxy`
+          }
+        ]
+      });
+    });
+
+    servers.sort((a, b) => a._priority - b._priority);
+    servers.forEach(s => delete s._priority);
 
     res.json({
       success: true,
-      servers: servers
+      movie: {
+        id: detail.id,
+        name: detail.title,
+        slug: detail.slug,
+        year: detail.year,
+        poster: detail.poster,
+        background: detail.background,
+        isSeries: detail.isSeries,
+        servers: servers
+      }
     });
   } catch (err) {
-    console.error('[API /api/xem20/movie] Error:', err.message);
+    console.error('[API Xem20 Movie Error]:', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });
