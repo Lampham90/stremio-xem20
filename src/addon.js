@@ -1,4 +1,6 @@
 const express = require('express');
+const https = require('https');
+const http = require('http');
 const xem20Client = require('./services/xem20Client');
 const cinemeta = require('./services/cinemeta');
 const config = require('./config');
@@ -8,7 +10,7 @@ const router = express.Router();
 // 1. MANIFEST
 const manifest = {
   id: 'community.xem20',
-  version: '1.0.0',
+  version: '1.0.1',
   name: 'XEM20 - Phim Thuyết Minh & Vietsub',
   description: 'Xem phim chất lượng cao 4K UHD, 1080p Bluray, Thuyết minh và Vietsub trực tiếp từ xem20.net (Xem14)',
   logo: 'https://xem20.net/storage/logo/favicon_xem14.png',
@@ -127,7 +129,10 @@ router.get('/meta/:type/:id.json', async (req, res) => {
 // 4. STREAM
 router.get('/stream/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
-  const host = req.headers.host ? `${req.protocol}://${req.headers.host}` : config.baseUrl;
+  // Always respect HTTPS on Render / reverse proxies
+  const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
+  const proto = isHttps ? 'https' : 'http';
+  const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
 
   try {
     let slug = null;
@@ -135,7 +140,6 @@ router.get('/stream/:type/:id.json', async (req, res) => {
     let targetEpisode = null;
 
     if (id.startsWith('xem20:')) {
-      // Format: xem20:slug OR xem20:slug:season:episode
       const parts = id.split(':');
       slug = parts[1];
       if (parts.length >= 4) {
@@ -143,7 +147,6 @@ router.get('/stream/:type/:id.json', async (req, res) => {
         targetEpisode = parseInt(parts[3], 10);
       }
     } else if (id.startsWith('tt')) {
-      // Format: tt123456 OR tt123456:season:episode
       const parts = id.split(':');
       const imdbId = parts[0];
       if (parts.length >= 3) {
@@ -177,7 +180,6 @@ router.get('/stream/:type/:id.json', async (req, res) => {
       if (targetEpisode !== null && detail.episodeMap.has(targetEpisode)) {
         matchingReleases = detail.episodeMap.get(targetEpisode);
       } else {
-        // Fallback: match by episode in name or return all
         matchingReleases = detail.releases.filter(r => r.episode === targetEpisode);
         if (matchingReleases.length === 0) {
           matchingReleases = detail.releases;
@@ -188,7 +190,6 @@ router.get('/stream/:type/:id.json', async (req, res) => {
     }
 
     const streams = matchingReleases.map(rel => {
-      // Build aesthetic badges for Stremio
       const isDub = rel.metaText.includes('Thuyết minh') || rel.name.includes('TM.') || rel.name.includes('Thuyết Minh');
       const isSub = rel.metaText.includes('Phụ Đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub') || rel.name.includes('Sub');
       const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('2160p');
@@ -217,13 +218,60 @@ router.get('/stream/:type/:id.json', async (req, res) => {
   }
 });
 
-// 5. PLAY REDIRECT ENDPOINT
+// 5. SMART PLAY STREAM ENDPOINT (Supports Direct 307 Redirect & High-Performance Range Proxy)
 router.get('/play/:id', async (req, res) => {
   const downloadLinkId = req.params.id;
   try {
     const directStreamUrl = await xem20Client.resolveStreamUrl(downloadLinkId);
-    // HTTP 307 Temporary Redirect to real video stream
-    res.redirect(307, directStreamUrl);
+
+    // If client requested direct redirect explicitly
+    if (req.query.redirect === '1') {
+      return res.redirect(307, directStreamUrl);
+    }
+
+    // High performance Streaming Proxy with HTTP 206 Range support
+    const streamHeaders = {
+      'User-Agent': req.headers['user-agent'] || 'Stremio/4.4.168',
+      'Referer': config.xem20.baseUrl + '/'
+    };
+    if (req.headers.range) {
+      streamHeaders['Range'] = req.headers.range;
+    }
+
+    const clientHttp = directStreamUrl.startsWith('https') ? https : http;
+    const proxyReq = clientHttp.get(directStreamUrl, { headers: streamHeaders }, (proxyRes) => {
+      // If DownFshare redirects (e.g. 302 to another CDN node)
+      if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+        return res.redirect(proxyRes.statusCode, proxyRes.headers.location);
+      }
+
+      // If DownFshare returns 429 limit on Render or CDN, fallback to 307 redirect directly
+      if (proxyRes.statusCode === 429) {
+        console.warn(`[Proxy] DownFshare trả về 429, chuyển sang 307 redirect trực tiếp cho client.`);
+        return res.redirect(307, directStreamUrl);
+      }
+
+      res.status(proxyRes.statusCode);
+      ['content-type', 'content-length', 'content-range', 'accept-ranges', 'content-disposition'].forEach(h => {
+        if (proxyRes.headers[h]) {
+          res.setHeader(h, proxyRes.headers[h]);
+        }
+      });
+
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (err) => {
+      console.error(`[Proxy Error #${downloadLinkId}]:`, err.message);
+      if (!res.headersSent) {
+        res.redirect(307, directStreamUrl);
+      }
+    });
+
+    req.on('close', () => {
+      proxyReq.destroy();
+    });
+
   } catch (err) {
     console.error(`[Addon] Không thể phát stream #${downloadLinkId}:`, err.message);
     res.status(502).send('Lỗi khi lấy stream video từ xem20: ' + err.message);

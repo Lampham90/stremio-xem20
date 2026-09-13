@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đã đạt giới hạn tải - DownFshare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-gray-200 flex flex-col items-center justify-center p-4">
+    <div class="glass w-full max-w-lg p-8 md:p-10 text-center">
+        <div class="inline-flex p-4 bg-orange-500/10 text-orange-400 rounded-2xl mb-6">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </div>
+        <h1 class="text-xl md:text-2xl font-bold text-white mb-3">Bạn đã đạt giới hạn tải hôm nay</h1>
+        <p class="text-gray-400 text-sm mb-2">
+                            Địa chỉ mạng (IP) của bạn đã tải tối đa <span class="text-orange-400 font-semibold">50 GB / ngày</span>. Giới hạn này áp cho toàn bộ lượt tải từ cùng một đường mạng để hệ thống phục vụ ổn định cho tất cả mọi người.
+                    </p>
+        <p class="text-gray-500 text-xs mb-8">
+            Hạn mức sẽ tự động làm mới sau 0h. Cảm ơn bạn đã thông cảm và ủng hộ website!
+        </p>
+        <a href="/" class="inline-block bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-8 rounded-xl transition">
+            Về trang chủ
+        </a>
+    </div>
+    <div class="mt-6 text-gray-600 text-xs text-center">
+        &copy; 2026 DownFshare Pro
+    </div>
+</body>
+</html>

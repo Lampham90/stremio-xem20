@@ -344,7 +344,7 @@ class Xem20Client {
         throw new Error(`Không tìm thấy hash vé tải trong Location header (${redirectUrl})`);
       }
 
-      const directStreamUrl = `https://dl.downfshare.top/x/${hash}/download`;
+      const directStreamUrl = `https://dl.downfshare.top/x/${hash}/play`;
       console.log(`[XEM20] Lấy link stream thành công: ${directStreamUrl}`);
 
       this.streamCache.set(downloadLinkId, {

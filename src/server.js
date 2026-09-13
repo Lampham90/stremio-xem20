@@ -5,6 +5,7 @@ const config = require('./config');
 const xem20Client = require('./services/xem20Client');
 
 const app = express();
+app.set('trust proxy', true);
 
 app.use(cors());
 app.use(express.json());
