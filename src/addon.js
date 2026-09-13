@@ -218,60 +218,19 @@ router.get('/stream/:type/:id.json', async (req, res) => {
   }
 });
 
-// 5. SMART PLAY STREAM ENDPOINT (Supports Direct 307 Redirect & High-Performance Range Proxy)
+// 5. PLAY STREAM ENDPOINT: DIRECT 307 REDIRECT FOR MAX SPEED
 router.get('/play/:id', async (req, res) => {
   const downloadLinkId = req.params.id;
   try {
     const directStreamUrl = await xem20Client.resolveStreamUrl(downloadLinkId);
 
-    // If client requested direct redirect explicitly
-    if (req.query.redirect === '1') {
-      return res.redirect(307, directStreamUrl);
-    }
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', '*');
 
-    // High performance Streaming Proxy with HTTP 206 Range support
-    const streamHeaders = {
-      'User-Agent': req.headers['user-agent'] || 'Stremio/4.4.168',
-      'Referer': config.xem20.baseUrl + '/'
-    };
-    if (req.headers.range) {
-      streamHeaders['Range'] = req.headers.range;
-    }
-
-    const clientHttp = directStreamUrl.startsWith('https') ? https : http;
-    const proxyReq = clientHttp.get(directStreamUrl, { headers: streamHeaders }, (proxyRes) => {
-      // If DownFshare redirects (e.g. 302 to another CDN node)
-      if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
-        return res.redirect(proxyRes.statusCode, proxyRes.headers.location);
-      }
-
-      // If DownFshare returns 429 limit on Render or CDN, fallback to 307 redirect directly
-      if (proxyRes.statusCode === 429) {
-        console.warn(`[Proxy] DownFshare trả về 429, chuyển sang 307 redirect trực tiếp cho client.`);
-        return res.redirect(307, directStreamUrl);
-      }
-
-      res.status(proxyRes.statusCode);
-      ['content-type', 'content-length', 'content-range', 'accept-ranges', 'content-disposition'].forEach(h => {
-        if (proxyRes.headers[h]) {
-          res.setHeader(h, proxyRes.headers[h]);
-        }
-      });
-
-      proxyRes.pipe(res);
-    });
-
-    proxyReq.on('error', (err) => {
-      console.error(`[Proxy Error #${downloadLinkId}]:`, err.message);
-      if (!res.headersSent) {
-        res.redirect(307, directStreamUrl);
-      }
-    });
-
-    req.on('close', () => {
-      proxyReq.destroy();
-    });
-
+    // Chuyển hướng 307 để Stremio kết nối trực tiếp tới máy chủ CDN (dl.downfshare.top)
+    // Giúp tận dụng tối đa tốc độ mạng nội địa, xem 4K/1080p mượt mà không bị nghẽn qua Render
+    console.log(`[Play #${downloadLinkId}] Chuyển hướng 307 trực tiếp tới: ${directStreamUrl}`);
+    return res.redirect(307, directStreamUrl);
   } catch (err) {
     console.error(`[Addon] Không thể phát stream #${downloadLinkId}:`, err.message);
     res.status(502).send('Lỗi khi lấy stream video từ xem20: ' + err.message);
