@@ -16,10 +16,10 @@ const httpsAgent = new https.Agent({
   timeout: 60000
 });
 
-// 1. MANIFEST (Đổi tên thành 'Ghiền Phim', mô tả 'Xem phim không quảng cáo', hỗ trợ tt/kk/xem20)
+// 1. MANIFEST (Tên: 'Ghiền Phim', Mô tả: 'Xem phim không quảng cáo')
 const manifest = {
   id: 'community.ghienphim',
-  version: '2.1.0',
+  version: '2.2.0',
   name: 'Ghiền Phim',
   description: 'Xem phim không quảng cáo',
   logo: 'https://xem20.net/storage/logo/favicon_xem14.png',
@@ -239,7 +239,6 @@ router.get('/meta/:type/:id.json', async (req, res) => {
         };
 
         if (detail.isSeries && detail.videos && detail.videos.length > 0) {
-          // Chuẩn hóa ID của các video theo ID hiện tại (tt... hoặc kk:...)
           meta.videos = detail.videos.map(v => ({
             ...v,
             id: `${id}:1:${v.episode}`
@@ -291,7 +290,7 @@ router.get('/meta/:type/:id.json', async (req, res) => {
   }
 });
 
-// 4. STREAM (Tìm Xem20 4K, KKPhim, NguonC với đường dẫn .m3u8 chuẩn)
+// 4. STREAM
 router.get('/stream/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
   const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
@@ -400,7 +399,6 @@ router.get('/stream/:type/:id.json', async (req, res) => {
             const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
 
             let qualityTag = is4K ? '4K UHD' : (is1080 ? '1080P FHD' : 'HD 720P');
-
             let audioTag = '';
             if (isDub && isSub) audioTag = '🔊 Thuyết Minh + 💬 Vietsub';
             else if (isDub) audioTag = '🔊 Thuyết Minh';
@@ -431,7 +429,7 @@ router.get('/stream/:type/:id.json', async (req, res) => {
     }
 
     // ========================================================
-    // 2. NGUỒN KKPHIM (ĐÃ SỬA: ĐƯỜNG DẪN .M3U8 & DIRECT CDN)
+    // 2. NGUỒN KKPHIM (DUY NHẤT LUỒNG ĐÃ QUA BỘ LỌC SẠCH)
     // ========================================================
     if (kkDetail && kkDetail.episodes && kkDetail.episodes.length > 0) {
       kkDetail.episodes.forEach(server => {
@@ -443,7 +441,7 @@ router.get('/stream/:type/:id.json', async (req, res) => {
         }) || serverData[targetEpisode - 1] || serverData[0];
 
         if (ep && ep.link_m3u8) {
-          // 1. Luồng M3U8 chuẩn qua bộ lọc (đảm bảo đuôi .m3u8)
+          // Luồng M3U8 đã qua bộ lọc sạch (loại bỏ quảng cáo & convertv)
           const cleanM3u8Url = `${host}/m3u8/stream.m3u8?url=${encodeURIComponent(ep.link_m3u8)}`;
           const isDub = sName.toLowerCase().includes('lồng tiếng') || sName.toLowerCase().includes('thuyết minh');
 
@@ -462,29 +460,12 @@ router.get('/stream/:type/:id.json', async (req, res) => {
               }
             }
           });
-
-          // 2. Luồng Direct CDN trực tiếp từ nguồn
-          streams.push({
-            _priority: (isDub ? 5 : 6) + 0.5,
-            name: `KKPhim ⚡ [${sName.toUpperCase()}]`,
-            title: `${movieName} - Tập ${targetEpisode}\n⚡ Server Trực Tiếp (${sName})`,
-            url: ep.link_m3u8,
-            behaviorHints: {
-              notWebReady: true,
-              proxyHeaders: {
-                request: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                  'Referer': 'https://phimapi.com/'
-                }
-              }
-            }
-          });
         }
       });
     }
 
     // ========================================================
-    // 3. NGUỒN NGUONC (ĐÃ SỬA: ĐƯỜNG DẪN .M3U8)
+    // 3. NGUỒN NGUONC (ĐÃ FIX QUA SEGMENT PROXY ĐẢM BẢO KHÔNG TREO)
     // ========================================================
     try {
       let nguoncDetail = null;
@@ -511,10 +492,10 @@ router.get('/stream/:type/:id.json', async (req, res) => {
 
           if (ep) {
             let streamUrl = '';
-            if (ep.m3u8 || ep.link_m3u8) {
-              streamUrl = `${host}/m3u8/stream.m3u8?url=${encodeURIComponent(ep.m3u8 || ep.link_m3u8)}`;
-            } else if (ep.embed) {
+            if (ep.embed) {
               streamUrl = `${host}/m3u8/nguonc.m3u8?embed=${encodeURIComponent(ep.embed)}`;
+            } else if (ep.m3u8 || ep.link_m3u8) {
+              streamUrl = `${host}/m3u8/stream.m3u8?url=${encodeURIComponent(ep.m3u8 || ep.link_m3u8)}`;
             }
 
             if (streamUrl) {
@@ -522,16 +503,7 @@ router.get('/stream/:type/:id.json', async (req, res) => {
                 _priority: 8,
                 name: `NguonC 🛡️ [${sName.toUpperCase()}]`,
                 title: `${movieName || 'Phim'} - Tập ${targetEpisode}\n🛡️ Server Dự Phòng (${sName})`,
-                url: streamUrl,
-                behaviorHints: {
-                  notWebReady: true,
-                  proxyHeaders: {
-                    request: {
-                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                      'Referer': 'https://phim.nguonc.com/'
-                    }
-                  }
-                }
+                url: streamUrl
               });
             }
           }
@@ -551,7 +523,7 @@ router.get('/stream/:type/:id.json', async (req, res) => {
   }
 });
 
-// 5. STREAM M3U8 SẠCH (CÓ ĐUÔI .M3U8 ĐỂ EXOPLAYER & STREMIO PHÁT NGAY)
+// 5. STREAM M3U8 SẠCH (KKPHIM)
 router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) return res.status(400).send('Missing url');
@@ -584,12 +556,11 @@ router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
     res.end(cleanContent);
   } catch (err) {
     console.error('[M3U8 Clean] Lỗi tải m3u8:', err.message);
-    // Nếu lỗi proxy, redirect trực tiếp về nguồn gốc để player tự phát
     res.redirect(302, targetUrl);
   }
 });
 
-// 6. NGUONC EMBED RESOLVER (CÓ ĐUÔI .M3U8)
+// 6. NGUONC EMBED RESOLVER (REWRITE QUA SEGMENT PROXY ĐẢM BẢO 100% KHÔNG TREO)
 router.all(['/m3u8/nguonc.m3u8', '/clean/nguonc.m3u8'], async (req, res) => {
   const embedUrl = req.query.embed;
   if (!embedUrl) return res.status(400).send('Missing embed');
@@ -612,7 +583,7 @@ router.all(['/m3u8/nguonc.m3u8', '/clean/nguonc.m3u8'], async (req, res) => {
     const rawM3u8 = await nguonc.resolveEmbed(embedUrl);
     if (!rawM3u8) return res.status(502).send('Failed to resolve NguonC embed stream');
 
-    const cleanContent = hlsCleaner.cleanM3u8(embedUrl, rawM3u8, host);
+    const cleanContent = hlsCleaner.cleanNguoncM3u8(rawM3u8, embedUrl, host);
     res.end(cleanContent);
   } catch (err) {
     console.error('[NguonC Clean] Lỗi:', err.message);
@@ -620,7 +591,49 @@ router.all(['/m3u8/nguonc.m3u8', '/clean/nguonc.m3u8'], async (req, res) => {
   }
 });
 
-// 7. SMART PLAY STREAM ENDPOINT (XEM20 Direct CDN vs Proxy Bypass)
+// 7. SEGMENT PROXY CHO NGUONC (GỬI KÈM REFERER TRÁNH 403 FORBIDDEN & TRÁNH TREO)
+router.all('/m3u8/segment.ts', (req, res) => {
+  const targetUrl = req.query.url;
+  const ref = req.query.ref;
+  if (!targetUrl) return res.status(400).end();
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Content-Type', 'video/MP2T');
+
+  if (req.method === 'OPTIONS' || req.method === 'HEAD') {
+    return res.status(200).end();
+  }
+
+  const upstreamReq = https.request(targetUrl, {
+    method: 'GET',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Referer': ref || 'https://embed.streamc.xyz/'
+    },
+    agent: httpsAgent
+  }, (upstreamRes) => {
+    res.statusCode = upstreamRes.statusCode;
+    if (upstreamRes.headers['content-length']) {
+      res.setHeader('Content-Length', upstreamRes.headers['content-length']);
+    }
+    upstreamRes.pipe(res);
+  });
+
+  upstreamReq.on('error', (e) => {
+    console.error('[NguonC Segment Proxy Error]:', e.message);
+    if (!res.headersSent) res.status(502).end();
+  });
+
+  req.on('close', () => {
+    upstreamReq.destroy();
+  });
+
+  upstreamReq.end();
+});
+
+// 8. SMART PLAY STREAM ENDPOINT (XEM20 Direct CDN vs Proxy Bypass)
 router.get('/play/:id', async (req, res) => {
   const downloadLinkId = req.params.id;
   const mode = req.query.mode || 'direct';
@@ -684,7 +697,7 @@ router.get('/play/:id', async (req, res) => {
   }
 });
 
-// 8. API /api/xem20/movie (Hỗ trợ tương thích cho Phimkk Android TV app)
+// 9. API /api/xem20/movie (Hỗ trợ tương thích cho Phimkk Android TV app)
 router.get('/api/xem20/movie', async (req, res) => {
   const { title, originTitle, year } = req.query;
   if (!title && !originTitle) {
