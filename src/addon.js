@@ -296,4 +296,137 @@ router.get('/play/:id', async (req, res) => {
   }
 });
 
+// 6. PHIMKK INTEGRATION API ENDPOINT
+router.get('/api/xem20/movie', async (req, res) => {
+  const { title, originTitle, year } = req.query;
+
+  try {
+    const candidates = [];
+    if (originTitle) candidates.push(originTitle);
+    if (title) candidates.push(title);
+
+    const searchQueries = [];
+    candidates.forEach(c => {
+      const trimmed = c.trim();
+      if (!searchQueries.includes(trimmed)) searchQueries.push(trimmed);
+      const noAnd = trimmed.replace(/\b(and|va|và)\b/gi, ' ').replace(/&/g, ' ').replace(/\s+/g, ' ').trim();
+      if (noAnd && !searchQueries.includes(noAnd)) searchQueries.push(noAnd);
+      const clean = trimmed.replace(/\((19|20)\d{2}\)/g, '').replace(/[\[\]\(\)\-:]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (clean && !searchQueries.includes(clean)) searchQueries.push(clean);
+    });
+
+    let matchedMeta = null;
+    for (const q of searchQueries) {
+      const results = await xem20Client.search(q);
+      if (results && results.length > 0) {
+        if (year) {
+          const yearMatch = results.find(r => r.description && r.description.includes(String(year)));
+          if (yearMatch) {
+            matchedMeta = yearMatch;
+            break;
+          }
+        }
+        if (!matchedMeta) matchedMeta = results[0];
+        if (matchedMeta) break;
+      }
+    }
+
+    if (!matchedMeta) {
+      return res.json({ success: false, message: 'Not found', servers: [] });
+    }
+
+    const detail = await xem20Client.getMovieDetail(matchedMeta.slug);
+    if (!detail) {
+      return res.json({ success: false, message: 'Detail not found', servers: [] });
+    }
+
+    const host = `${req.protocol}://${req.get('host')}`;
+    const servers = [];
+
+    if (detail.isSeries && detail.episodeMap && detail.episodeMap.size > 0) {
+      const qualityMap = new Map();
+
+      for (const [epNum, rels] of detail.episodeMap.entries()) {
+        rels.forEach(rel => {
+          const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('2160p');
+          const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('Thuyết Minh');
+          const isSub = rel.metaText.includes('Phụ đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub');
+
+          let sName = is4K ? '4K UHD' : '1080P FHD';
+          if (isDub && !isSub) sName += ' (TM)';
+          else if (isSub && !isDub) sName += ' (Sub)';
+
+          if (!qualityMap.has(sName)) qualityMap.set(sName, []);
+
+          const existingList = qualityMap.get(sName);
+          if (!existingList.some(e => e.slug === `tap-${epNum}`)) {
+            existingList.push({
+              name: `Tập ${epNum}`,
+              slug: `tap-${epNum}`,
+              linkM3u8: `${host}/play/${rel.downloadLinkId}?mode=direct`,
+              isNguonc: false
+            });
+          }
+        });
+      }
+
+      for (const [sName, epList] of qualityMap.entries()) {
+        epList.sort((a, b) => {
+          const numA = parseInt(a.name.replace(/\D/g, '') || '0', 10);
+          const numB = parseInt(b.name.replace(/\D/g, '') || '0', 10);
+          return numA - numB;
+        });
+        servers.push({
+          serverName: sName,
+          serverData: epList,
+          isNguonc: false
+        });
+      }
+    } else if (detail.releases && detail.releases.length > 0) {
+      detail.releases.forEach(rel => {
+        const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('2160p');
+        const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
+        const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('Thuyết Minh');
+        const isSub = rel.metaText.includes('Phụ đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub') || rel.name.includes('Sub');
+
+        let qualityTag = '1080P FHD';
+        if (is4K) qualityTag = '4K UHD';
+        else if (!is1080 && rel.metaText.includes('720P')) qualityTag = '720P HD';
+
+        let audioTag = '';
+        if (isDub && isSub) audioTag = 'TM + Vietsub';
+        else if (isDub) audioTag = 'Thuyết Minh';
+        else if (isSub) audioTag = 'Vietsub';
+
+        const serverName = `${qualityTag}${audioTag ? ' (' + audioTag + ')' : ''}`;
+
+        servers.push({
+          serverName: serverName,
+          serverData: [
+            {
+              name: 'Full',
+              slug: 'full',
+              linkM3u8: `${host}/play/${rel.downloadLinkId}?mode=direct`,
+              isNguonc: false
+            }
+          ],
+          isNguonc: false
+        });
+      });
+    }
+
+    res.json({
+      success: true,
+      title: detail.title,
+      slug: detail.slug,
+      isSeries: detail.isSeries,
+      servers
+    });
+  } catch (err) {
+    console.error('[API xem20/movie] Error:', err.message);
+    res.status(500).json({ success: false, message: err.message, servers: [] });
+  }
+});
+
 module.exports = router;
+
