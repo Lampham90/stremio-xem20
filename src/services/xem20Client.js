@@ -208,7 +208,6 @@ class Xem20Client {
     }
   }
 
-  // Thuật toán tìm phim chuẩn xác dựa trên tên tiếng Anh, tên tiếng Việt và năm phát hành
   async findBestMatchingMovie({ originTitle, title, year, isSeries = false }) {
     const searchTerms = [];
     if (originTitle) {
@@ -225,7 +224,6 @@ class Xem20Client {
       const results = await this.search(term);
       if (!results || results.length === 0) continue;
 
-      // Ưu tiên 1: Khớp cả năm và loại phim (movie / series)
       if (year) {
         const exactMatch = results.find(r => {
           const desc = r.description || '';
@@ -236,7 +234,6 @@ class Xem20Client {
         if (exactMatch) return exactMatch.slug;
       }
 
-      // Ưu tiên 2: Kết quả đầu tiên phù hợp định dạng
       const typeMatch = results.find(r => (isSeries ? r.type === 'series' : true));
       return (typeMatch || results[0]).slug;
     }

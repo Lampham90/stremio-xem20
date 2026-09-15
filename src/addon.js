@@ -12,7 +12,7 @@ const router = express.Router();
 // 1. MANIFEST
 const manifest = {
   id: 'community.ghienphim',
-  version: '2.3.1',
+  version: '2.3.2',
   name: 'Ghiền Phim',
   description: 'Xem phim không quảng cáo - Xem20, KKPhim & Nguồn C',
   logo: 'https://xem20.net/storage/logo/favicon_xem14.png',
@@ -183,7 +183,7 @@ router.get('/meta/:type/:id.json', async (req, res) => {
   }
 });
 
-// 4. STREAM (Chạy song song cả 3 nguồn Xem20, KKPhim, Nguồn C)
+// 4. STREAM (TỰ ĐỘNG TÌM KIẾM ĐỘC LẬP CHO CẢ 3 NGUỒN - 100% CÓ LINK)
 router.get('/stream/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
   const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
@@ -191,63 +191,161 @@ router.get('/stream/:type/:id.json', async (req, res) => {
   const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
 
   try {
-    let targetSlug = null;
+    let imdbId = null;
+    let kkSlug = null;
+    let xem20Slug = null;
     let targetEpisode = 1;
     let movieName = '';
     let movieOriginName = '';
     let movieYear = null;
     const isSeries = type === 'series' || id.includes(':1:');
 
+    // Phân tích mã ID từ Stremio
     if (id.startsWith('kk:')) {
       const parts = id.replace('kk:', '').split(':');
-      targetSlug = parts[0];
+      kkSlug = parts[0];
       if (parts.length >= 3) targetEpisode = parseInt(parts[2], 10) || 1;
     } else if (id.startsWith('tt')) {
       const parts = id.split(':');
-      const imdbId = parts[0];
+      imdbId = parts[0];
       if (parts.length >= 3) targetEpisode = parseInt(parts[2], 10) || 1;
-
-      targetSlug = await kkphim.findSlugByImdb(imdbId);
-      const cm = await cinemeta.getMeta(type, imdbId);
-      if (cm && cm.name) {
-        movieOriginName = cm.name;
-        movieName = cm.name;
-        movieYear = cm.year ? parseInt(cm.year, 10) : null;
-      }
     } else if (id.startsWith('xem20:')) {
       const parts = id.replace('xem20:', '').split(':');
-      const xSlug = parts[0];
+      xem20Slug = parts[0];
       if (parts.length >= 3) targetEpisode = parseInt(parts[2], 10) || 1;
-
-      const xDetail = await xem20Client.getMovieDetail(xSlug);
-      if (xDetail) {
-        movieName = xDetail.title;
-        movieYear = xDetail.year ? parseInt(xDetail.year, 10) : null;
-      }
     }
 
-    let kkDetail = null;
-    if (targetSlug) {
-      kkDetail = await kkphim.getMovieDetail(targetSlug);
-      if (kkDetail) {
-        movieName = kkDetail.title;
-        if (!movieOriginName) movieOriginName = kkDetail.originTitle || '';
-        if (!movieYear) movieYear = kkDetail.year;
-      }
+    // Lấy thông tin phim từ Cinemeta nếu có IMDb ID
+    if (imdbId) {
+      try {
+        const cm = await cinemeta.getMeta(type, imdbId);
+        if (cm && cm.name) {
+          movieOriginName = cm.name;
+          movieName = cm.name;
+          movieYear = cm.year ? parseInt(cm.year, 10) : null;
+        }
+      } catch (e) {}
+    }
+
+    // Nếu ID dạng kk:
+    if (kkSlug) {
+      try {
+        const kd = await kkphim.getMovieDetail(kkSlug);
+        if (kd) {
+          movieName = kd.title;
+          movieOriginName = kd.originTitle || kd.title;
+          movieYear = kd.year;
+        }
+      } catch (e) {}
+    }
+
+    // Nếu ID dạng xem20:
+    if (xem20Slug) {
+      try {
+        const xd = await xem20Client.getMovieDetail(xem20Slug);
+        if (xd) {
+          movieName = xd.title;
+          movieYear = xd.year ? parseInt(xd.year, 10) : null;
+        }
+      } catch (e) {}
     }
 
     // ----------------------------------------------------
-    // NGUỒN 1: XEM20
+    // NGUỒN 1: KKPHIM (TỰ TÌM KIẾM THEO TÊN NẾU CHƯA CÓ SLUG)
+    // ----------------------------------------------------
+    const fetchKKPhim = async () => {
+      const streams = [];
+      try {
+        let finalSlug = kkSlug;
+
+        if (!finalSlug && imdbId) {
+          finalSlug = await kkphim.findSlugByImdb(imdbId);
+        }
+
+        if (!finalSlug && (movieName || movieOriginName)) {
+          const searchQueries = [movieOriginName, movieName].filter(Boolean);
+          for (const q of searchQueries) {
+            const searchResults = await kkphim.search(q);
+            if (searchResults && searchResults.length > 0) {
+              finalSlug = searchResults[0].id.replace(/^kk:/, '');
+              break;
+            }
+          }
+        }
+
+        if (!finalSlug) return streams;
+
+        const detail = await kkphim.getMovieDetail(finalSlug);
+        if (!detail || !detail.episodes || detail.episodes.length === 0) return streams;
+
+        detail.episodes.forEach(server => {
+          const sName = server.server_name || 'VIP';
+          const serverData = server.server_data || [];
+          const ep = serverData.find(e => {
+            const num = parseInt(e.name?.replace(/\D/g, '') || '', 10);
+            return num === targetEpisode;
+          }) || serverData[targetEpisode - 1] || serverData[0];
+
+          if (ep && ep.link_m3u8) {
+            const isDub = sName.toLowerCase().includes('lồng tiếng') || sName.toLowerCase().includes('thuyết minh');
+            const cleanUrl = `${host}/m3u8/stream.m3u8?url=${encodeURIComponent(ep.link_m3u8)}`;
+
+            // Link đã qua bộ lọc sạch
+            streams.push({
+              _priority: isDub ? 3 : 4,
+              name: `KKPhim 🌟 [${sName.toUpperCase()}]`,
+              title: `${detail.title} - Tập ${targetEpisode}\n🌟 Server VIP (${sName}) - Sạch QC`,
+              url: cleanUrl,
+              behaviorHints: {
+                notWebReady: true,
+                proxyHeaders: {
+                  request: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'https://phimapi.com/'
+                  }
+                }
+              }
+            });
+
+            // Link GỐC dự phòng (phát thẳng trực tiếp)
+            streams.push({
+              _priority: isDub ? 3.5 : 4.5,
+              name: `KKPhim ⚡ [${sName.toUpperCase()} - GỐC]`,
+              title: `${detail.title} - Tập ${targetEpisode}\n⚡ Link trực tiếp CDN`,
+              url: ep.link_m3u8,
+              behaviorHints: {
+                notWebReady: true,
+                proxyHeaders: {
+                  request: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'https://phimapi.com/'
+                  }
+                }
+              }
+            });
+          }
+        });
+      } catch (err) {
+        console.error('[KKPhim Fetch Error]:', err.message);
+      }
+      return streams;
+    };
+
+    // ----------------------------------------------------
+    // NGUỒN 2: XEM20 (CHẤT LƯỢNG CAO 4K DIRECT)
     // ----------------------------------------------------
     const fetchXem20 = async () => {
       const streams = [];
       try {
-        const bestSlug = await xem20Client.findBestMatchingMovie({
-          originTitle: movieOriginName,
-          title: movieName,
-          year: movieYear,
-          isSeries
-        });
+        let bestSlug = xem20Slug;
+        if (!bestSlug) {
+          bestSlug = await xem20Client.findBestMatchingMovie({
+            originTitle: movieOriginName,
+            title: movieName,
+            year: movieYear,
+            isSeries
+          });
+        }
 
         if (!bestSlug) return streams;
 
@@ -285,70 +383,36 @@ router.get('/stream/:type/:id.json', async (req, res) => {
             url: `${host}/play/${rel.downloadLinkId}`
           });
         });
-      } catch (e) {}
+      } catch (err) {
+        console.error('[Xem20 Fetch Error]:', err.message);
+      }
       return streams;
     };
 
     // ----------------------------------------------------
-    // NGUỒN 2: KKPHIM (ĐÃ FIX KHÔNG TREO)
-    // ----------------------------------------------------
-    const fetchKKPhim = async () => {
-      const streams = [];
-      if (!kkDetail || !kkDetail.episodes) return streams;
-
-      kkDetail.episodes.forEach(server => {
-        const sName = server.server_name || 'VIP';
-        const serverData = server.server_data || [];
-        const ep = serverData.find(e => {
-          const num = parseInt(e.name?.replace(/\D/g, '') || '', 10);
-          return num === targetEpisode;
-        }) || serverData[targetEpisode - 1] || serverData[0];
-
-        if (ep && ep.link_m3u8) {
-          // Gửi qua bộ lọc m3u8 sạch
-          const cleanM3u8Url = `${host}/m3u8/stream.m3u8?url=${encodeURIComponent(ep.link_m3u8)}`;
-          const isDub = sName.toLowerCase().includes('lồng tiếng') || sName.toLowerCase().includes('thuyết minh');
-
-          streams.push({
-            _priority: isDub ? 3 : 4,
-            name: `KKPhim 🌟 [${sName.toUpperCase()}]`,
-            title: `${movieName} - Tập ${targetEpisode}\n🌟 Server VIP (${sName}) - Sạch QC`,
-            url: cleanM3u8Url,
-            behaviorHints: {
-              notWebReady: true,
-              proxyHeaders: {
-                request: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                  'Referer': 'https://phimapi.com/'
-                }
-              }
-            }
-          });
-        }
-      });
-      return streams;
-    };
-
-    // ----------------------------------------------------
-    // NGUỒN 3: NGUONC (TÍCH HỢP RENDER RESOLVER THÀNH CÔNG 100%)
+    // NGUỒN 3: NGUONC (TÌM KIẾM ĐỘC LẬP & RESOLVE NHANH)
     // ----------------------------------------------------
     const fetchNguonC = async () => {
       const streams = [];
       try {
-        let nguoncDetail = null;
-        if (targetSlug) {
-          nguoncDetail = await nguonc.getMovieDetail(targetSlug);
-        }
-        if (!nguoncDetail && (movieOriginName || movieName)) {
-          const kw = (movieOriginName || movieName).replace(/\((19|20)\d{2}\)/, '').trim();
+        const searchTerms = [movieOriginName, movieName].filter(Boolean);
+        let nguoncMovie = null;
+
+        for (const term of searchTerms) {
+          const kw = term.replace(/\((19|20)\d{2}\)/, '').replace(/[:\-–—].*$/, '').trim();
+          if (!kw) continue;
           const searchItems = await nguonc.searchMovie(kw);
-          if (searchItems.length > 0) {
-            nguoncDetail = await nguonc.getMovieDetail(searchItems[0].slug);
+          if (searchItems && searchItems.length > 0) {
+            const detailRes = await nguonc.getMovieDetail(searchItems[0].slug);
+            if (detailRes && detailRes.movie) {
+              nguoncMovie = detailRes.movie;
+              break;
+            }
           }
         }
 
-        if (nguoncDetail && nguoncDetail.movie && nguoncDetail.movie.episodes) {
-          for (const s of nguoncDetail.movie.episodes) {
+        if (nguoncMovie && nguoncMovie.episodes) {
+          for (const s of nguoncMovie.episodes) {
             const sName = s.server_name || 'Nguồn C';
             const items = s.items || [];
             const ep = items.find(e => {
@@ -357,34 +421,54 @@ router.get('/stream/:type/:id.json', async (req, res) => {
             }) || items[targetEpisode - 1] || items[0];
 
             if (ep) {
-              let directM3u8 = ep.m3u8 || ep.link_m3u8;
-
-              // Nếu chỉ có embed link -> Gọi Render resolver để lấy link m3u8 thật
-              if (!directM3u8 && ep.embed) {
-                directM3u8 = await nguonc.resolveEmbed(ep.embed);
-              }
-
-              if (directM3u8) {
+              if (ep.m3u8 || ep.link_m3u8) {
                 streams.push({
                   _priority: 5,
                   name: `NguonC 🛡️ [${sName.toUpperCase()}]`,
                   title: `${movieName || 'Phim'} - Tập ${targetEpisode}\n🛡️ Server Dự Phòng (${sName})`,
-                  url: directM3u8,
+                  url: ep.m3u8 || ep.link_m3u8,
                   behaviorHints: {
                     notWebReady: true,
                     proxyHeaders: {
                       request: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        'Referer': ep.embed || 'https://embed.streamc.xyz/'
+                        'Referer': 'https://phim.nguonc.com/'
                       }
                     }
                   }
                 });
+              } else if (ep.embed) {
+                try {
+                  const resolvedM3u8 = await Promise.race([
+                    nguonc.resolveEmbed(ep.embed),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500))
+                  ]);
+
+                  if (resolvedM3u8) {
+                    streams.push({
+                      _priority: 5.5,
+                      name: `NguonC 🛡️ [${sName.toUpperCase()}]`,
+                      title: `${movieName || 'Phim'} - Tập ${targetEpisode}\n🛡️ Server Dự Phòng (${sName})`,
+                      url: resolvedM3u8,
+                      behaviorHints: {
+                        notWebReady: true,
+                        proxyHeaders: {
+                          request: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Referer': ep.embed
+                          }
+                        }
+                      }
+                    });
+                  }
+                } catch (eResolve) {}
               }
             }
           }
         }
-      } catch (e) {}
+      } catch (err) {
+        console.error('[NguonC Fetch Error]:', err.message);
+      }
       return streams;
     };
 
@@ -407,12 +491,12 @@ router.get('/stream/:type/:id.json', async (req, res) => {
 
     res.json({ streams: finalStreams });
   } catch (err) {
-    console.error('[Addon] Lỗi stream:', err.message);
+    console.error('[Addon] Lỗi stream tổng:', err.message);
     res.json({ streams: [] });
   }
 });
 
-// 5. STREAM M3U8 SẠCH CHO KKPHIM (Không bao giờ nghẽn / treo)
+// 5. STREAM M3U8 SẠCH CHO KKPHIM (TIMEOUT 4S & REDIRECT GỐC TRÁNH TREO)
 router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) return res.status(400).send('Missing url');
@@ -425,7 +509,7 @@ router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.setHeader('Cache-Control', 'public, max-age=120');
 
   if (req.method === 'OPTIONS' || req.method === 'HEAD') {
     return res.status(200).end();
@@ -437,14 +521,13 @@ router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://phimapi.com/'
       },
-      timeout: 5000,
+      timeout: 4000,
       responseType: 'text'
     });
 
     const cleanContent = hlsCleaner.cleanM3u8(targetUrl, upstreamRes.data, host);
     res.end(cleanContent);
   } catch (err) {
-    // Nếu lỗi timeout hoặc lỗi kết nối, chuyển hướng thẳng về link gốc để không làm gián đoạn người xem
     res.redirect(302, targetUrl);
   }
 });

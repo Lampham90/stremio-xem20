@@ -47,16 +47,15 @@ class NguoncService {
     if (cached && cached.expireAt > Date.now()) return cached.m3u8;
 
     try {
-      // Gọi trực tiếp đến Render resolver của bạn
       const res = await axios.get(`${this.resolverBase}/resolve?url=${encodeURIComponent(embedUrl)}`, {
-        timeout: 6000
+        timeout: 4000
       });
       if (res.data && res.data.m3u8) {
         this.cache.set(cacheKey, { m3u8: res.data.m3u8, expireAt: Date.now() + 30 * 60 * 1000 });
         return res.data.m3u8;
       }
     } catch (err) {
-      console.warn('[NguonC Resolver] Lỗi khi giải mã embed:', err.message);
+      console.warn('[NguonC Resolver Error]:', err.message);
     }
     return null;
   }

@@ -2,7 +2,7 @@ const { URL } = require('url');
 
 class HlsCleaner {
   constructor() {
-    this.cleanCache = new Map(); // cache kết quả m3u8 tránh gọi nhiều lần gây treo
+    this.cleanCache = new Map();
   }
 
   cleanM3u8(requestUrl, content, host) {
@@ -16,13 +16,12 @@ class HlsCleaner {
     const lines = content.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) return content;
 
-    // 1. MASTER PLAYLIST (Chứa danh sách chất lượng video hoặc audio media)
+    // 1. MASTER PLAYLIST (Chứa thông tin độ phân giải và track âm thanh/phụ đề)
     if (content.includes('#EXT-X-STREAM-INF') || content.includes('#EXT-X-MEDIA')) {
       const result = [];
       for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
 
-        // Xử lý các track audio/phụ đề độc lập
         if (line.startsWith('#EXT-X-MEDIA:')) {
           line = line.replace(/URI="([^"]+)"/, (match, uri) => {
             try {
@@ -38,7 +37,6 @@ class HlsCleaner {
 
         result.push(line);
 
-        // Xử lý variant stream bên dưới #EXT-X-STREAM-INF
         if (line.startsWith('#EXT-X-STREAM-INF') && i + 1 < lines.length) {
           const nextLine = lines[i + 1];
           if (!nextLine.startsWith('#')) {
@@ -77,7 +75,6 @@ class HlsCleaner {
       }
     }
 
-    // Tách thành các block dựa theo #EXT-X-DISCONTINUITY
     const headerLines = [];
     const blocks = [];
     let currentBlock = [];
@@ -99,15 +96,12 @@ class HlsCleaner {
     }
     if (currentBlock.length > 0) blocks.push(currentBlock);
 
-    // Lọc bỏ quảng cáo
     const filteredBlocks = blocks.filter(block => {
       const segs = block.filter(l => !l.startsWith('#'));
       if (segs.length === 0) return false;
 
-      // Nếu chứa url rõ ràng là qc
       if (segs.some(l => /\/(v\d+|ads|qc|intro|banner)\//i.test(l))) return false;
 
-      // Nếu khác path chính và chỉ có vài segment (< 15) -> qc chèn
       const firstSeg = segs[0].replace(/convertv\d+\//gi, '');
       const blockPath = firstSeg.includes('/') ? firstSeg.substring(0, firstSeg.lastIndexOf('/')) : '';
       if (mainPath && blockPath !== mainPath && segs.length < 15) {
@@ -117,7 +111,6 @@ class HlsCleaner {
       return true;
     });
 
-    // Nếu lọc xong mà bị rỗng (do nhận diện nhầm), giữ nguyên playlist gốc để không làm chết phim
     if (filteredBlocks.length === 0) {
       return content;
     }
