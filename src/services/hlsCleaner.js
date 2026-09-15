@@ -1,81 +1,52 @@
 const { URL } = require('url');
 
 class HlsCleaner {
-  constructor() {
-    this.cleanCache = new Map();
-  }
-
   cleanM3u8(requestUrl, content, host) {
     if (!content || typeof content !== 'string') return content;
-
-    const cacheKey = `${requestUrl}_${content.length}`;
-    if (this.cleanCache.has(cacheKey)) {
-      return this.cleanCache.get(cacheKey);
-    }
-
-    const lines = content.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) return content;
 
-    // 1. MASTER PLAYLIST (Chứa thông tin độ phân giải và track âm thanh/phụ đề)
-    if (content.includes('#EXT-X-STREAM-INF') || content.includes('#EXT-X-MEDIA')) {
+    // 1. Master Playlist (chứa #EXT-X-STREAM-INF)
+    if (content.includes('#EXT-X-STREAM-INF')) {
       const result = [];
       for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
-
-        if (line.startsWith('#EXT-X-MEDIA:')) {
-          line = line.replace(/URI="([^"]+)"/, (match, uri) => {
-            try {
-              const abs = new URL(uri, requestUrl).href;
-              return `URI="${host}/m3u8/stream.m3u8?url=${encodeURIComponent(abs)}"`;
-            } catch (e) {
-              return match;
-            }
-          });
+        const line = lines[i];
+        if (line.startsWith('#EXT-X-STREAM-INF')) {
           result.push(line);
-          continue;
-        }
-
-        result.push(line);
-
-        if (line.startsWith('#EXT-X-STREAM-INF') && i + 1 < lines.length) {
-          const nextLine = lines[i + 1];
-          if (!nextLine.startsWith('#')) {
+          if (i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
             try {
-              const variantUrl = new URL(nextLine, requestUrl).href;
+              const variantUrl = new URL(lines[i + 1], requestUrl).href;
               result.push(`${host}/m3u8/stream.m3u8?url=${encodeURIComponent(variantUrl)}`);
-              i++;
             } catch (e) {
-              result.push(nextLine);
-              i++;
+              result.push(lines[i + 1]);
             }
+            i++;
           }
+        } else {
+          result.push(line);
         }
       }
-      const resText = result.join('\n');
-      this.setCache(cacheKey, resText);
-      return resText;
+      return result.join('\n');
     }
 
-    // 2. MEDIA PLAYLIST (.ts Segments): Lọc quảng cáo v7, v8, ads, convertv
-    const segmentUrls = lines.filter(l => !l.startsWith('#'));
+    // 2. Media Playlist
+    const uris = lines.filter(l => !l.startsWith('#'));
     const pathCounts = new Map();
-
-    for (const u of segmentUrls) {
-      const cleanU = u.replace(/convertv\d+\//gi, '');
-      const pathDir = cleanU.includes('/') ? cleanU.substring(0, cleanU.lastIndexOf('/')) : '';
-      pathCounts.set(pathDir, (pathCounts.get(pathDir) || 0) + 1);
+    for (const uri of uris) {
+      const p = uri.includes('/') ? uri.substring(0, uri.lastIndexOf('/')) : '';
+      pathCounts.set(p, (pathCounts.get(p) || 0) + 1);
     }
 
     let mainPath = '';
     let maxCount = 0;
-    for (const [p, count] of pathCounts.entries()) {
-      if (count > maxCount) {
-        maxCount = count;
+    for (const [p, c] of pathCounts.entries()) {
+      if (c > maxCount) {
+        maxCount = c;
         mainPath = p;
       }
     }
 
-    const headerLines = [];
+    const header = [];
     const blocks = [];
     let currentBlock = [];
     let isHeader = true;
@@ -86,7 +57,7 @@ class HlsCleaner {
         if (currentBlock.length > 0) blocks.push(currentBlock);
         currentBlock = [];
       } else if (isHeader && line.startsWith('#EXT') && !line.startsWith('#EXTINF')) {
-        headerLines.push(line);
+        header.push(line);
       } else {
         if (!line.startsWith('#EXT-X-ENDLIST')) {
           isHeader = false;
@@ -96,72 +67,71 @@ class HlsCleaner {
     }
     if (currentBlock.length > 0) blocks.push(currentBlock);
 
-    const filteredBlocks = blocks.filter(block => {
-      const segs = block.filter(l => !l.startsWith('#'));
-      if (segs.length === 0) return false;
+    // Lọc bỏ triệt để các khối quảng cáo chèn ngang
+    const cleanBlocks = blocks.filter(block => {
+      const segmentsInBlock = block.filter(l => !l.startsWith('#'));
+      if (segmentsInBlock.length === 0) return true;
 
-      if (segs.some(l => /\/(v\d+|ads|qc|intro|banner)\//i.test(l))) return false;
+      const firstUri = segmentsInBlock[0];
+      const blockPath = firstUri.includes('/') ? firstUri.substring(0, firstUri.lastIndexOf('/')) : '';
+      const isMainPath = blockPath === mainPath;
+      const isLongBlock = segmentsInBlock.length > 40;
+      const pathFrequency = (pathCounts.get(blockPath) || 0) / (uris.length || 1);
+      const hasConvert = segmentsInBlock.some(l => /convertv\d+\//i.test(l));
 
-      const firstSeg = segs[0].replace(/convertv\d+\//gi, '');
-      const blockPath = firstSeg.includes('/') ? firstSeg.substring(0, firstSeg.lastIndexOf('/')) : '';
-      if (mainPath && blockPath !== mainPath && segs.length < 15) {
-        return false;
-      }
-
-      return true;
+      // Khối quảng cáo riêng biệt (như /v8/.../segment_0001.ts) có path lạ và ngắn -> bị loại bỏ
+      return isMainPath || isLongBlock || pathFrequency > 0.2 || hasConvert;
     });
 
-    if (filteredBlocks.length === 0) {
-      return content;
-    }
-
-    const output = [...headerLines];
-    filteredBlocks.forEach((block, index) => {
-      if (index > 0) {
-        output.push('#EXT-X-DISCONTINUITY');
-      }
-
+    const finalLines = [...header];
+    for (const block of cleanBlocks) {
       for (const line of block) {
         if (!line.startsWith('#')) {
-          const cleanLine = line.replace(/convertv\d+\//gi, '');
+          // Xóa prefix convertv* để gọi trực tiếp phân đoạn video sạch gốc
+          const cleanedLine = line.replace(/convertv\d+\//gi, '');
+          let absUrl = cleanedLine;
           try {
-            output.push(new URL(cleanLine, requestUrl).href);
-          } catch (e) {
-            output.push(cleanLine);
-          }
+            absUrl = new URL(cleanedLine, requestUrl).href;
+          } catch (e) {}
+          finalLines.push(absUrl);
         } else if (line.startsWith('#EXT-X-KEY')) {
           try {
             const keyMatch = line.match(/URI="([^"]+)"/);
             if (keyMatch) {
               const absKey = new URL(keyMatch[1], requestUrl).href;
-              output.push(line.replace(keyMatch[1], absKey));
+              finalLines.push(line.replace(keyMatch[1], absKey));
             } else {
-              output.push(line);
+              finalLines.push(line);
             }
           } catch (e) {
-            output.push(line);
+            finalLines.push(line);
           }
-        } else {
-          output.push(line);
+        } else if (!line.startsWith('#EXT-X-DISCONTINUITY')) {
+          // Loại bỏ toàn bộ tag DISCONTINUITY của quảng cáo để trình phát không bị khựng lại hay xoay vòng
+          finalLines.push(line);
         }
       }
-    });
-
-    if (content.includes('#EXT-X-ENDLIST')) {
-      output.push('#EXT-X-ENDLIST');
     }
 
-    const finalText = output.join('\n');
-    this.setCache(cacheKey, finalText);
-    return finalText;
+    if (content.includes('#EXT-X-ENDLIST')) finalLines.push('#EXT-X-ENDLIST');
+    return finalLines.join('\n');
   }
 
-  setCache(key, value) {
-    if (this.cleanCache.size > 200) {
-      const firstKey = this.cleanCache.keys().next().value;
-      this.cleanCache.delete(firstKey);
+  cleanNguoncM3u8(rawM3u8, embedUrl, host) {
+    if (!rawM3u8 || typeof rawM3u8 !== 'string') return rawM3u8;
+    const embedOrigin = new URL(embedUrl).origin;
+    const lines = rawM3u8.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const result = [];
+
+    for (const line of lines) {
+      if (!line.startsWith('#')) {
+        // Rewrite tất cả các phân đoạn sang segment proxy có kèm Referer để tránh lỗi 403 Forbidden
+        result.push(`${host}/m3u8/segment.ts?url=${encodeURIComponent(line)}&ref=${encodeURIComponent(embedOrigin)}`);
+      } else {
+        result.push(line);
+      }
     }
-    this.cleanCache.set(key, value);
+    return result.join('\n');
   }
 }
 

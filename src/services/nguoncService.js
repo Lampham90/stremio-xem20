@@ -16,7 +16,7 @@ class NguoncService {
     try {
       const res = await axios.get(`${this.apiBase}/api/film/${encodeURIComponent(slug)}`, {
         headers: this.headers,
-        timeout: 5000
+        timeout: 6000
       });
       if (res.data && res.data.status === 'success' && res.data.movie) {
         return res.data;
@@ -31,7 +31,7 @@ class NguoncService {
       const clean = keyword.replace(/\+/g, ' ').trim();
       const res = await axios.get(`${this.apiBase}/api/film/search?keyword=${encodeURIComponent(clean)}`, {
         headers: this.headers,
-        timeout: 5000
+        timeout: 6000
       });
       const items = res.data?.items || res.data?.data?.items || [];
       return Array.isArray(items) ? items : [];
@@ -48,14 +48,14 @@ class NguoncService {
 
     try {
       const res = await axios.get(`${this.resolverBase}/resolve?url=${encodeURIComponent(embedUrl)}`, {
-        timeout: 4000
+        timeout: 10000
       });
       if (res.data && res.data.m3u8) {
         this.cache.set(cacheKey, { m3u8: res.data.m3u8, expireAt: Date.now() + 30 * 60 * 1000 });
         return res.data.m3u8;
       }
     } catch (err) {
-      console.warn('[NguonC Resolver Error]:', err.message);
+      console.warn('[NguonC] Lỗi resolve embed:', err.message);
     }
     return null;
   }
