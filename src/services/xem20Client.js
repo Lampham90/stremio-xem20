@@ -21,14 +21,14 @@ class Xem20Client {
 
     this.isLoggedIn = false;
     this.csrfToken = null;
-    this.streamCache = new Map(); // downloadLinkId -> { url, expireAt }
-    this.releaseMetadata = new Map(); // downloadLinkId -> { slug, token }
+    this.streamCache = new Map();
+    this.releaseMetadata = new Map();
+    this.searchCache = new Map();
+    this.detailCache = new Map();
   }
 
   async ensureLoggedIn() {
-    if (this.isLoggedIn && this.csrfToken) {
-      return;
-    }
+    if (this.isLoggedIn && this.csrfToken) return;
     await this.login();
   }
 
@@ -177,8 +177,14 @@ class Xem20Client {
 
   async search(query) {
     if (!query) return [];
+    const cleanQuery = query.trim().toLowerCase();
+    const cached = this.searchCache.get(cleanQuery);
+    if (cached && cached.expireAt > Date.now()) {
+      return cached.data;
+    }
+
     try {
-      const url = `${config.xem20.baseUrl}/tim-kiem?keyword=${encodeURIComponent(query)}`;
+      const url = `${config.xem20.baseUrl}/tim-kiem?keyword=${encodeURIComponent(query.trim())}`;
       const res = await this.client.get(url);
       const $ = cheerio.load(res.data);
       const metas = [];
@@ -190,6 +196,11 @@ class Xem20Client {
         }
       });
 
+      this.searchCache.set(cleanQuery, {
+        data: metas,
+        expireAt: Date.now() + 60 * 60 * 1000
+      });
+
       return metas;
     } catch (err) {
       console.error('[XEM20] Lỗi tìm kiếm:', err.message);
@@ -197,16 +208,58 @@ class Xem20Client {
     }
   }
 
+  // Thuật toán tìm phim chuẩn xác dựa trên tên tiếng Anh, tên tiếng Việt và năm phát hành
+  async findBestMatchingMovie({ originTitle, title, year, isSeries = false }) {
+    const searchTerms = [];
+    if (originTitle) {
+      searchTerms.push(originTitle.replace(/[:\-–—].*$/, '').trim());
+      searchTerms.push(originTitle.trim());
+    }
+    if (title && title !== originTitle) {
+      searchTerms.push(title.replace(/[:\-–—].*$/, '').trim());
+      searchTerms.push(title.trim());
+    }
+
+    for (const term of searchTerms) {
+      if (!term || term.length < 2) continue;
+      const results = await this.search(term);
+      if (!results || results.length === 0) continue;
+
+      // Ưu tiên 1: Khớp cả năm và loại phim (movie / series)
+      if (year) {
+        const exactMatch = results.find(r => {
+          const desc = r.description || '';
+          const hasYear = desc.includes(String(year)) || desc.includes(String(year - 1)) || desc.includes(String(year + 1));
+          const matchType = isSeries ? r.type === 'series' : true;
+          return hasYear && matchType;
+        });
+        if (exactMatch) return exactMatch.slug;
+      }
+
+      // Ưu tiên 2: Kết quả đầu tiên phù hợp định dạng
+      const typeMatch = results.find(r => (isSeries ? r.type === 'series' : true));
+      return (typeMatch || results[0]).slug;
+    }
+
+    return null;
+  }
+
   async getMovieDetail(slug) {
+    if (!slug) return null;
+    const cleanSlug = slug.trim();
+    const cached = this.detailCache.get(cleanSlug);
+    if (cached && cached.expireAt > Date.now()) {
+      return cached.data;
+    }
+
     await this.ensureLoggedIn();
-    const url = `${config.xem20.baseUrl}/${slug}`;
+    const url = `${config.xem20.baseUrl}/${cleanSlug}`;
 
     try {
       let res = await this.client.get(url);
       let $ = cheerio.load(res.data);
 
       if ($('a[href*="/login"]').text().includes('Đăng nhập để tải')) {
-        console.log('[XEM20] Cần đăng nhập lại để xem release forms...');
         await this.login(true);
         res = await this.client.get(url);
         $ = cheerio.load(res.data);
@@ -280,8 +333,8 @@ class Xem20Client {
 
       const isSeries = episodeMap.size > 0 || slug.includes('phim-bo') || releases.some(r => r.episode !== null);
 
-      return {
-        slug,
+      const movieDetailResult = {
+        slug: cleanSlug,
         title,
         overview,
         poster,
@@ -292,6 +345,13 @@ class Xem20Client {
         releases,
         episodeMap
       };
+
+      this.detailCache.set(cleanSlug, {
+        data: movieDetailResult,
+        expireAt: Date.now() + 60 * 60 * 1000
+      });
+
+      return movieDetailResult;
     } catch (err) {
       console.error(`[XEM20] Lỗi khi lấy chi tiết phim ${slug}:`, err.message);
       return null;
@@ -311,7 +371,6 @@ class Xem20Client {
     const refererUrl = meta.slug ? `${config.xem20.baseUrl}/${meta.slug}` : `${config.xem20.baseUrl}/`;
 
     const accessUrl = `${config.xem20.baseUrl}/download-links/${downloadLinkId}/access`;
-    console.log(`[XEM20] Đang lấy vé tải cho release #${downloadLinkId}...`);
 
     try {
       const params = new URLSearchParams();
@@ -328,8 +387,6 @@ class Xem20Client {
       });
 
       const redirectUrl = res.headers['location'] || res.headers['Location'] || '';
-      console.log(`[XEM20] Nhận redirect 302: ${redirectUrl}`);
-
       let hash = null;
       const hashMatch = redirectUrl.match(/\/x\/([a-f0-9]{32,64})/);
 
@@ -341,11 +398,10 @@ class Xem20Client {
       }
 
       if (!hash) {
-        throw new Error(`Không tìm thấy hash vé tải trong Location header (${redirectUrl})`);
+        throw new Error(`Không tìm thấy hash vé tải (${redirectUrl})`);
       }
 
       const directStreamUrl = `https://dl.downfshare.top/x/${hash}/play`;
-      console.log(`[XEM20] Lấy link stream thành công: ${directStreamUrl}`);
 
       this.streamCache.set(downloadLinkId, {
         url: directStreamUrl,
