@@ -1,0 +1,2145 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  services/
+    cinemeta.js
+    hlsCleaner.js
+    kkphimService.js
+    nguoncService.js
+    xem20Client.js
+  addon.js
+  config.js
+  server.js
+.dockerignore
+.env.example
+.gitignore
+429.html
+Dockerfile
+package.json
+README.md
+render.yaml
+start.bat
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/config.js">
+require('dotenv').config();
+
+module.exports = {
+  port: parseInt(process.env.PORT, 10) || 7000,
+  baseUrl: process.env.BASE_URL || 'http://localhost:7000',
+  xem20: {
+    baseUrl: process.env.XEM20_BASE_URL || 'https://xem20.net',
+    username: process.env.XEM20_USERNAME || 'streamio_test10',
+    password: process.env.XEM20_PASSWORD || 'TestPassword123!',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  },
+  cacheTtlMs: 2 * 60 * 60 * 1000 // 2 hours
+};
+</file>
+
+<file path=".dockerignore">
+node_modules
+.git
+.env
+cloudflared.exe
+*.log
+</file>
+
+<file path=".env.example">
+PORT=7000
+BASE_URL=http://localhost:7000
+XEM20_BASE_URL=https://xem20.net
+XEM20_USERNAME=streamio_test10
+XEM20_PASSWORD=TestPassword123!
+</file>
+
+<file path=".gitignore">
+node_modules/
+.env
+cloudflared.exe
+*.log
+</file>
+
+<file path="429.html">
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đã đạt giới hạn tải - DownFshare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-gray-200 flex flex-col items-center justify-center p-4">
+    <div class="glass w-full max-w-lg p-8 md:p-10 text-center">
+        <div class="inline-flex p-4 bg-orange-500/10 text-orange-400 rounded-2xl mb-6">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </div>
+        <h1 class="text-xl md:text-2xl font-bold text-white mb-3">Bạn đã đạt giới hạn tải hôm nay</h1>
+        <p class="text-gray-400 text-sm mb-2">
+                            Địa chỉ mạng (IP) của bạn đã tải tối đa <span class="text-orange-400 font-semibold">50 GB / ngày</span>. Giới hạn này áp cho toàn bộ lượt tải từ cùng một đường mạng để hệ thống phục vụ ổn định cho tất cả mọi người.
+                    </p>
+        <p class="text-gray-500 text-xs mb-8">
+            Hạn mức sẽ tự động làm mới sau 0h. Cảm ơn bạn đã thông cảm và ủng hộ website!
+        </p>
+        <a href="/" class="inline-block bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-8 rounded-xl transition">
+            Về trang chủ
+        </a>
+    </div>
+    <div class="mt-6 text-gray-600 text-xs text-center">
+        &copy; 2026 DownFshare Pro
+    </div>
+</body>
+</html>
+</file>
+
+<file path="Dockerfile">
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY . .
+EXPOSE 7000
+CMD ["node", "src/server.js"]
+</file>
+
+<file path="package.json">
+{
+  "name": "stremio-xem20-addon",
+  "version": "1.0.0",
+  "description": "Stremio Addon for xem20.net (Xem14) - High quality Vietnamese dubbed & subbed movies and series",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "stremio",
+    "addon",
+    "xem20",
+    "xem14",
+    "phim-thuyet-minh",
+    "vietsub"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "axios-cookiejar-support": "^5.0.5",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "tough-cookie": "^5.1.0"
+  }
+}
+</file>
+
+<file path="README.md">
+# XEM20 Stremio Addon
+
+Addon hoàn chỉnh cho **Stremio** tích hợp kho phim chất lượng cao từ **xem20.net** (tiền thân là Xem14 / DownFshare).
+
+## Các tính năng chính
+
+- **Chất lượng siêu cao**: 4K UHD 2160p, 1080p Bluray Remux, HEVC 10bit, x264, âm thanh AAC 7.1 / 5.1.
+- **Thuyết minh & Vietsub**: Phân loại rõ ràng các bản Thuyết minh tiếng Việt và Vietsub/Phụ đề chuẩn.
+- **Tốc độ tải trực tiếp (HTTP Direct Stream)**: Phát video qua luồng trực tiếp của downfshare với hỗ trợ Range Request (HTTP 206 Partial Content), tua nhanh mượt mà trên Stremio.
+- **Tích hợp kép**:
+  1. **Catalog xem20.net**: Duyệt Phim Lẻ, Phim Bộ, Phim Mới trực tiếp trong mục Khám phá (Discover) của Stremio.
+  2. **Tìm kiếm & Khớp phim theo IMDb (Cinemeta)**: Khi mở bất kỳ phim nào trên Stremio qua IMDb ID (`tt...`), addon sẽ tự động đối soát và cung cấp link xem20.
+- **Tự động quản lý tài khoản**: Tự động đăng nhập và duy trì session để lấy vé tải trơn tru, không gián đoạn.
+
+---
+
+## Cách cài đặt và sử dụng
+
+### 1. Chạy trên máy tính (Windows)
+
+1. Mở thư mục dự án `stremio-xem20-addon`.
+2. Chạy file `start.bat` (hoặc mở Terminal gõ `npm start`).
+3. Mở trình duyệt truy cập: [http://localhost:7000](http://localhost:7000).
+4. Bấm nút **"Cài Đặt Vào Stremio (1-Click)"** hoặc bấm **"Sao chép"** link Manifest:
+   ```
+   http://localhost:7000/manifest.json
+   ```
+5. Trong ứng dụng Stremio, vào mục **Addons**, dán link trên vào thanh tìm kiếm rồi bấm **Install**.
+
+---
+
+### 2. Cài đặt lên Android TV / Điện thoại / FireStick
+
+- **Cách 1**: Cài addon trên máy tính đăng nhập cùng tài khoản Stremio. Addon sẽ tự động đồng bộ sang Android TV / điện thoại của bạn qua đám mây Stremio!
+- **Cách 2**: Chạy server trên mạng LAN (thay `localhost` bằng IP máy tính trong mạng, ví dụ `192.168.1.100:7000`) và dán link vào Stremio trên TV.
+
+---
+
+### 3. Deploy lên Cloud (Render / Koyeb / VPS) để xem mọi lúc mọi nơi
+
+Bạn có thể đưa mã nguồn này lên GitHub và deploy miễn phí lên [Render.com](https://render.com) hoặc [Koyeb.com](https://koyeb.com):
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Environment Variables:
+  - `PORT`: `7000` (hoặc do Cloud cấp tự động)
+  - `BASE_URL`: `https://ten-app-cua-ban.onrender.com`
+  - `XEM20_USERNAME`: tài khoản của bạn (hoặc để mặc định)
+  - `XEM20_PASSWORD`: mật khẩu của bạn (hoặc để mặc định)
+
+---
+
+## Cấu trúc mã nguồn
+
+```
+stremio-xem20-addon/
+├── src/
+│   ├── config.js              # Quản lý cấu hình, biến môi trường
+│   ├── addon.js               # Manifest, Catalogs, Meta, Streams router
+│   ├── server.js              # Express web server & UI cài đặt
+│   └── services/
+│       ├── xem20Client.js     # Trình crawler, auth session, giải mã stream
+│       └── cinemeta.js        # Tra cứu tên phim từ IMDb ID
+├── .env                       # Cấu hình tài khoản & cổng mạng
+├── package.json               # Danh sách thư viện cần thiết
+├── start.bat                  # File khởi động 1-click trên Windows
+└── README.md                  # Hướng dẫn chi tiết
+```
+</file>
+
+<file path="render.yaml">
+services:
+  - type: web
+    name: stremio-xem20-addon
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 7000
+      - key: XEM20_USERNAME
+        value: streamio_test10
+      - key: XEM20_PASSWORD
+        value: TestPassword123!
+</file>
+
+<file path="start.bat">
+@echo off
+title XEM20 Stremio Addon
+cd /d "%~dp0"
+echo ====================================================
+echo   Dang khoi dong XEM20 Stremio Addon...
+echo ====================================================
+node src/server.js
+pause
+</file>
+
+<file path="src/server.js">
+const express = require('express');
+const cors = require('cors');
+const addonRouter = require('./addon');
+const config = require('./config');
+const xem20Client = require('./services/xem20Client');
+
+const app = express();
+app.set('trust proxy', true);
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// HTML Web Configuration & Install Page
+app.get('/', (req, res) => {
+  const manifestUrl = 'http://127.0.0.1:7000/manifest.json';
+
+  res.send(`<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XEM20 Stremio Addon</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { background: radial-gradient(circle at top, #1e1b4b 0%, #030712 100%); }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100 flex items-center justify-center p-4">
+  <div class="max-w-xl w-full bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
+    <div class="text-center space-y-3">
+      <div class="inline-flex p-3 bg-indigo-600/20 text-indigo-400 rounded-2xl border border-indigo-500/30 text-3xl">
+        <i class="fa-solid fa-film"></i>
+      </div>
+      <h1 class="text-3xl font-black tracking-tight text-white">XEM20 Stremio Addon</h1>
+      <p class="text-slate-400 text-sm">Xem phim 4K UHD, 1080p Bluray, Thuyết Minh & Vietsub đỉnh cao từ xem20.net (Xem14)</p>
+    </div>
+
+    <div class="space-y-3 bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 text-sm">
+      <div class="flex items-center justify-between">
+        <span class="text-slate-400">Trạng thái máy chủ:</span>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Sẵn sàng hoạt động
+        </span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-slate-400">Tài khoản XEM20:</span>
+        <span class="font-mono text-xs text-indigo-300">${config.xem20.username}</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-slate-400">Giao thức phát:</span>
+        <span class="text-xs text-slate-300">HTTP 206 Direct Range Stream</span>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="bg-indigo-950/40 border border-indigo-500/30 p-4 rounded-2xl space-y-2">
+        <p class="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Link cài đặt Addon:</p>
+        <div class="flex gap-2">
+          <input type="text" readonly value="${manifestUrl}" id="manifestInput"
+                 class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-emerald-400 focus:outline-none select-all">
+          <button onclick="navigator.clipboard.writeText(document.getElementById('manifestInput').value); alert('Đã sao chép link! Hãy mở Stremio và dán vào ô tìm kiếm Addons.');"
+                  class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md">
+            Sao Chép
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl text-xs text-slate-300 space-y-2">
+        <p class="font-bold text-slate-200 text-sm">👉 Cách cài đặt chuẩn vào Stremio:</p>
+        <ol class="list-decimal list-inside space-y-1.5 text-slate-400">
+          <li>Mở ứng dụng <span class="text-slate-200 font-semibold">Stremio</span> trên máy tính.</li>
+          <li>Bấm vào biểu tượng <span class="text-slate-200 font-semibold">Addons</span> (mảnh ghép 🧩 ở thanh bên trái).</li>
+          <li>Dán link <code class="text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded font-mono">${manifestUrl}</code> vào ô tìm kiếm Addons rồi nhấn <span class="text-slate-200 font-semibold">Enter</span>.</li>
+          <li>Bấm nút <span class="text-indigo-400 font-bold">Install</span> (Cài đặt) màu xanh vừa hiện ra.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="border-t border-slate-800/80 pt-4 text-xs text-slate-500 space-y-1">
+      <p>• Hỗ trợ Stremio trên Windows, macOS, Linux, Android, Android TV, Google TV.</p>
+      <p>• Với điện thoại/Smart TV khác: Dán link Manifest trên vào ô tìm kiếm Addon trong app Stremio.</p>
+    </div>
+  </div>
+</body>
+</html>`);
+});
+
+// Attach Stremio router
+app.use(addonRouter);
+
+app.listen(config.port, async () => {
+  console.log(`====================================================`);
+  console.log(`🚀 XEM20 Stremio Addon đang chạy tại: http://localhost:${config.port}`);
+  console.log(`👉 Link Manifest: http://127.0.0.1:${config.port}/manifest.json`);
+  console.log(`====================================================`);
+
+  try {
+    await xem20Client.ensureLoggedIn();
+  } catch (e) {
+    console.warn('[Startup] Sẽ tự động đăng nhập khi có yêu cầu đầu tiên.');
+  }
+});
+</file>
+
+<file path="src/services/cinemeta.js">
+const axios = require('axios');
+
+class CinemetaService {
+  constructor() {
+    this.cache = new Map();
+    this.searchCache = new Map();
+  }
+
+  async getMeta(type, imdbId) {
+    if (!imdbId || !imdbId.startsWith('tt')) return null;
+
+    if (this.cache.has(imdbId)) {
+      return this.cache.get(imdbId);
+    }
+
+    try {
+      const res = await axios.get(`https://v3-cinemeta.strem.io/meta/${type}/${imdbId}.json`, {
+        timeout: 5000
+      });
+
+      if (res.data && res.data.meta) {
+        const meta = {
+          imdbId,
+          name: res.data.meta.name,
+          year: res.data.meta.year,
+          type: res.data.meta.type
+        };
+        this.cache.set(imdbId, meta);
+        return meta;
+      }
+    } catch (err) {
+      console.warn(`[Cinemeta] Không lấy được thông tin cho ${imdbId}:`, err.message);
+    }
+
+    return null;
+  }
+
+  async findImdbId(title, year = null, type = 'movie') {
+    if (!title) return null;
+    const cleanTitle = title.replace(/\((19|20)\d{2}\)/, '').trim();
+    const cacheKey = `${cleanTitle.toLowerCase()}_${year || ''}_${type}`;
+    if (this.searchCache.has(cacheKey)) return this.searchCache.get(cacheKey);
+
+    try {
+      const res = await axios.get(`https://v3-cinemeta.strem.io/catalog/${type}/top/search=${encodeURIComponent(cleanTitle)}.json`, {
+        timeout: 5000
+      });
+      const metas = res.data?.metas || [];
+      if (metas.length > 0) {
+        let match = metas[0];
+        if (year) {
+          const yearMatch = metas.find(m => m.year && String(m.year) === String(year));
+          if (yearMatch) match = yearMatch;
+        }
+        if (match && match.id && match.id.startsWith('tt')) {
+          this.searchCache.set(cacheKey, match.id);
+          this.cache.set(match.id, {
+            imdbId: match.id,
+            name: match.name,
+            year: match.year,
+            type: match.type || type
+          });
+          return match.id;
+        }
+      }
+    } catch (e) {}
+
+    this.searchCache.set(cacheKey, null);
+    return null;
+  }
+}
+
+module.exports = new CinemetaService();
+</file>
+
+<file path="src/services/xem20Client.js">
+const axios = require('axios');
+const { wrapper } = require('axios-cookiejar-support');
+const { CookieJar } = require('tough-cookie');
+const cheerio = require('cheerio');
+const config = require('../config');
+
+class Xem20Client {
+  constructor() {
+    this.jar = new CookieJar();
+    this.client = wrapper(axios.create({
+      jar: this.jar,
+      withCredentials: true,
+      headers: {
+        'User-Agent': config.xem20.userAgent,
+        'Referer': config.xem20.baseUrl + '/',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      timeout: 15000
+    }));
+
+    this.isLoggedIn = false;
+    this.csrfToken = null;
+    this.streamCache = new Map(); // downloadLinkId -> { url, expireAt }
+    this.releaseMetadata = new Map(); // downloadLinkId -> { slug, token }
+    this.searchCache = new Map(); // query -> { data, expireAt }
+    this.detailCache = new Map(); // slug -> { data, expireAt }
+  }
+
+  async ensureLoggedIn() {
+    if (this.isLoggedIn && this.csrfToken) {
+      return;
+    }
+    await this.login();
+  }
+
+  async login(force = false) {
+    try {
+      console.log('[XEM20] Đang lấy CSRF token từ trang đăng nhập...');
+      const loginPageRes = await this.client.get(`${config.xem20.baseUrl}/login`);
+      const $ = cheerio.load(loginPageRes.data);
+      this.csrfToken = $('input[name="_token"]').val();
+
+      if (!this.csrfToken) {
+        throw new Error('Không tìm thấy CSRF token trên trang đăng nhập xem20.net');
+      }
+
+      console.log('[XEM20] Đang đăng nhập với tài khoản:', config.xem20.username);
+      const params = new URLSearchParams();
+      params.append('_token', this.csrfToken);
+      params.append('login', config.xem20.username);
+      params.append('password', config.xem20.password);
+      params.append('remember', 'on');
+
+      const loginRes = await this.client.post(`${config.xem20.baseUrl}/login`, params.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Origin': config.xem20.baseUrl
+        }
+      });
+
+      const $after = cheerio.load(loginRes.data);
+      const nextToken = $after('meta[name="csrf-token"]').attr('content') || $after('input[name="_token"]').val();
+      if (nextToken) this.csrfToken = nextToken;
+
+      this.isLoggedIn = true;
+      console.log('[XEM20] Đăng nhập thành công!');
+    } catch (err) {
+      console.error('[XEM20] Lỗi đăng nhập:', err.message);
+      await this.tryRegisterFallback();
+    }
+  }
+
+  async tryRegisterFallback() {
+    try {
+      const fallbackUser = 'user_' + Math.random().toString(36).substring(2, 9);
+      const fallbackEmail = `${fallbackUser}@antigravity.test`;
+      const fallbackPass = 'AgyPass@' + Math.floor(1000 + Math.random() * 9000);
+
+      console.log('[XEM20] Thử đăng ký tài khoản tự động mới:', fallbackUser);
+      const regPage = await this.client.get(`${config.xem20.baseUrl}/register`);
+      const $ = cheerio.load(regPage.data);
+      const token = $('input[name="_token"]').val();
+
+      const params = new URLSearchParams();
+      params.append('_token', token);
+      params.append('name', fallbackUser);
+      params.append('username', fallbackUser);
+      params.append('email', fallbackEmail);
+      params.append('password', fallbackPass);
+      params.append('password_confirmation', fallbackPass);
+
+      await this.client.post(`${config.xem20.baseUrl}/register`, params.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Origin': config.xem20.baseUrl
+        }
+      });
+
+      this.isLoggedIn = true;
+      this.csrfToken = token;
+      console.log('[XEM20] Đăng ký tự động thành công!');
+    } catch (err) {
+      console.error('[XEM20] Lỗi khi tạo tài khoản dự phòng:', err.message);
+    }
+  }
+
+  parseCard($, el, defaultType = 'movie') {
+    const $el = $(el);
+    let href = $el.attr('href') || '';
+    if (!href) return null;
+
+    let slug = href.replace(config.xem20.baseUrl, '').replace(/^\//, '').split('?')[0];
+    if (!slug || slug.includes('#')) return null;
+
+    const ignoreList = [
+      'danh-sach', 'the-loai', 'quoc-gia', 'login', 'register',
+      'tu-phim', 'loc-phim', 'profile', 'shop', 'wheel',
+      'nam', 'dao-dien', 'dien-vien'
+    ];
+    if (ignoreList.some(prefix => slug === prefix || slug.startsWith(prefix + '/'))) {
+      return null;
+    }
+
+    const title = $el.find('h3, .line-clamp-1, .line-clamp-2, p.font-semibold, p.text-sm').first().text().trim();
+    if (!title) return null;
+
+    const poster = $el.find('img').attr('src') || $el.find('img').attr('data-src') || '';
+    const badge = $el.find('.absolute, span, .text-xs').map((_, s) => $(s).text().trim()).get().join(' · ');
+
+    let type = defaultType;
+    if (badge.includes('Tập') || badge.includes('Full') || href.includes('phim-bo') || slug.includes('phim-bo')) {
+      type = 'series';
+    }
+
+    return {
+      id: `xem20:${slug}`,
+      slug,
+      name: title,
+      type,
+      poster: poster.startsWith('//') ? 'https:' + poster : poster,
+      description: badge
+    };
+  }
+
+  async getCatalog(catalogType, skip = 0) {
+    let url = config.xem20.baseUrl;
+    let defaultType = 'movie';
+    const page = Math.floor(skip / 18) + 1;
+
+    if (catalogType === 'xem20_series') {
+      url = `${config.xem20.baseUrl}/danh-sach/phim-bo?page=${page}`;
+      defaultType = 'series';
+    } else if (catalogType === 'xem20_movies') {
+      url = `${config.xem20.baseUrl}/danh-sach/phim-le?page=${page}`;
+      defaultType = 'movie';
+    } else if (catalogType === 'xem20_new') {
+      url = `${config.xem20.baseUrl}/danh-sach/moi-co-ban-tai?page=${page}`;
+    }
+
+    try {
+      const res = await this.client.get(url);
+      const $ = cheerio.load(res.data);
+      const metas = [];
+
+      $('a.cd-card').each((_, el) => {
+        const meta = this.parseCard($, el, defaultType);
+        if (meta && !metas.find(m => m.id === meta.id)) {
+          metas.push(meta);
+        }
+      });
+
+      return metas;
+    } catch (err) {
+      console.error(`[XEM20] Lỗi khi lấy catalog ${catalogType}:`, err.message);
+      return [];
+    }
+  }
+
+  async search(query) {
+    if (!query) return [];
+    const cleanQuery = query.trim().toLowerCase();
+    const cached = this.searchCache.get(cleanQuery);
+    if (cached && cached.expireAt > Date.now()) {
+      return cached.data;
+    }
+
+    try {
+      const url = `${config.xem20.baseUrl}/tim-kiem?keyword=${encodeURIComponent(query.trim())}`;
+      const res = await this.client.get(url);
+      const $ = cheerio.load(res.data);
+      const metas = [];
+
+      $('a.cd-card').each((_, el) => {
+        const meta = this.parseCard($, el);
+        if (meta && !metas.find(m => m.id === meta.id)) {
+          metas.push(meta);
+        }
+      });
+
+      this.searchCache.set(cleanQuery, {
+        data: metas,
+        expireAt: Date.now() + 60 * 60 * 1000 // Cache 1 giờ
+      });
+
+      return metas;
+    } catch (err) {
+      console.error('[XEM20] Lỗi tìm kiếm:', err.message);
+      return [];
+    }
+  }
+
+  async getMovieDetail(slug) {
+    if (!slug) return null;
+    const cleanSlug = slug.trim();
+    const cached = this.detailCache.get(cleanSlug);
+    if (cached && cached.expireAt > Date.now()) {
+      return cached.data;
+    }
+
+    await this.ensureLoggedIn();
+    const url = `${config.xem20.baseUrl}/${cleanSlug}`;
+
+    try {
+      let res = await this.client.get(url);
+      let $ = cheerio.load(res.data);
+
+      if ($('a[href*="/login"]').text().includes('Đăng nhập để tải')) {
+        console.log('[XEM20] Cần đăng nhập lại để xem release forms...');
+        await this.login(true);
+        res = await this.client.get(url);
+        $ = cheerio.load(res.data);
+      }
+
+      const pageToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
+      if (pageToken) this.csrfToken = pageToken;
+
+      const title = $('h1').first().text().trim() || $('meta[property="og:title"]').attr('content') || slug;
+      const overview = $('meta[name="description"]').attr('content') || $('p.line-clamp-3, .description').text().trim();
+      const poster = $('meta[property="og:image"]').attr('content') || $('img.poster, .cd-poster img').attr('src');
+      const background = $('meta[property="og:image"]').attr('content');
+
+      const yearMatch = title.match(/\b(19\d\d|20\d\d)\b/) || res.data.match(/\/nam\/(\d{4})/);
+      const year = yearMatch ? yearMatch[1] : '';
+
+      const genres = [];
+      $('a[href*="/the-loai/"]').each((_, el) => {
+        genres.push($(el).text().trim());
+      });
+
+      const releases = [];
+      const episodeMap = new Map();
+
+      $('article.cd-release').each((_, el) => {
+        const $el = $(el);
+        const name = $el.find('p.cd-release__name').text().trim();
+        const metaText = $el.find('div.cd-release__meta').text().replace(/\s+/g, ' ').trim();
+
+        const form = $el.find('form[data-download-form], form[action*="/download-links/"]');
+        const action = form.attr('action') || '';
+        const idMatch = action.match(/\/download-links\/(\d+)\/access/);
+        const downloadLinkId = idMatch ? idMatch[1] : null;
+
+        if (!downloadLinkId) return;
+
+        const formToken = form.find('input[name="_token"]').val() || pageToken;
+        this.releaseMetadata.set(downloadLinkId, {
+          slug,
+          token: formToken
+        });
+
+        let season = 1;
+        let episode = null;
+
+        const epMatch = name.match(/[Tt]ập\s*(\d+)/i) || name.match(/\bS(\d+)E(\d+)\b/i) || name.match(/\bE(\d+)\b/i);
+        if (epMatch) {
+          if (epMatch.length === 3 && epMatch[1] && epMatch[2]) {
+            season = parseInt(epMatch[1], 10);
+            episode = parseInt(epMatch[2], 10);
+          } else {
+            episode = parseInt(epMatch[1], 10);
+          }
+        }
+
+        const releaseObj = {
+          downloadLinkId,
+          name,
+          metaText,
+          season,
+          episode
+        };
+
+        releases.push(releaseObj);
+
+        if (episode !== null) {
+          if (!episodeMap.has(episode)) episodeMap.set(episode, []);
+          episodeMap.get(episode).push(releaseObj);
+        }
+      });
+
+      const isSeries = episodeMap.size > 0 || slug.includes('phim-bo') || releases.some(r => r.episode !== null);
+
+      const movieDetailResult = {
+        slug: cleanSlug,
+        title,
+        overview,
+        poster,
+        background,
+        year,
+        genres,
+        isSeries,
+        releases,
+        episodeMap
+      };
+
+      this.detailCache.set(cleanSlug, {
+        data: movieDetailResult,
+        expireAt: Date.now() + 60 * 60 * 1000 // Cache 1 giờ
+      });
+
+      return movieDetailResult;
+    } catch (err) {
+      console.error(`[XEM20] Lỗi khi lấy chi tiết phim ${slug}:`, err.message);
+      return null;
+    }
+  }
+
+  async resolveStreamUrl(downloadLinkId) {
+    const cached = this.streamCache.get(downloadLinkId);
+    if (cached && cached.expireAt > Date.now()) {
+      return cached.url;
+    }
+
+    await this.ensureLoggedIn();
+
+    const meta = this.releaseMetadata.get(downloadLinkId) || {};
+    let token = meta.token || this.csrfToken;
+    const refererUrl = meta.slug ? `${config.xem20.baseUrl}/${meta.slug}` : `${config.xem20.baseUrl}/`;
+
+    const accessUrl = `${config.xem20.baseUrl}/download-links/${downloadLinkId}/access`;
+    console.log(`[XEM20] Đang lấy vé tải cho release #${downloadLinkId}...`);
+
+    try {
+      const params = new URLSearchParams();
+      params.append('_token', token || '');
+
+      const res = await this.client.post(accessUrl, params.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Referer': refererUrl,
+          'Origin': config.xem20.baseUrl
+        },
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400
+      });
+
+      const redirectUrl = res.headers['location'] || res.headers['Location'] || '';
+      console.log(`[XEM20] Nhận redirect 302: ${redirectUrl}`);
+
+      let hash = null;
+      const hashMatch = redirectUrl.match(/\/x\/([a-f0-9]{32,64})/);
+
+      if (hashMatch) {
+        hash = hashMatch[1];
+      } else if (res.data && typeof res.data === 'string') {
+        const bodyMatch = res.data.match(/\/x\/([a-f0-9]{32,64})/);
+        if (bodyMatch) hash = bodyMatch[1];
+      }
+
+      if (!hash) {
+        throw new Error(`Không tìm thấy hash vé tải trong Location header (${redirectUrl})`);
+      }
+
+      const directStreamUrl = `https://dl.downfshare.top/x/${hash}/play`;
+      console.log(`[XEM20] Lấy link stream thành công: ${directStreamUrl}`);
+
+      this.streamCache.set(downloadLinkId, {
+        url: directStreamUrl,
+        expireAt: Date.now() + config.cacheTtlMs
+      });
+
+      return directStreamUrl;
+    } catch (err) {
+      console.error(`[XEM20] Lỗi khi lấy stream cho release #${downloadLinkId}:`, err.message);
+      throw err;
+    }
+  }
+}
+
+module.exports = new Xem20Client();
+</file>
+
+<file path="src/services/nguoncService.js">
+const axios = require('axios');
+
+class NguoncService {
+  constructor() {
+    this.apiBase = 'https://phim.nguonc.com';
+    this.resolverBase = 'https://ghienphim-ktfd.onrender.com';
+    this.headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json'
+    };
+    this.cache = new Map();
+  }
+
+  async getMovieDetail(slug) {
+    if (!slug) return null;
+    try {
+      const res = await axios.get(`${this.apiBase}/api/film/${encodeURIComponent(slug)}`, {
+        headers: this.headers,
+        timeout: 6000
+      });
+      if (res.data && res.data.status === 'success' && res.data.movie) {
+        return res.data;
+      }
+    } catch (err) {}
+    return null;
+  }
+
+  async searchMovie(keyword) {
+    if (!keyword) return [];
+    try {
+      const clean = keyword.replace(/\+/g, ' ').trim();
+      const res = await axios.get(`${this.apiBase}/api/film/search?keyword=${encodeURIComponent(clean)}`, {
+        headers: this.headers,
+        timeout: 6000
+      });
+      const items = res.data?.items || res.data?.data?.items || [];
+      return Array.isArray(items) ? items : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  async resolveEmbed(embedUrl) {
+    if (!embedUrl) return null;
+    const cacheKey = `res_${embedUrl}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.expireAt > Date.now()) return cached.m3u8;
+
+    try {
+      const res = await axios.get(`${this.resolverBase}/resolve?url=${encodeURIComponent(embedUrl)}`, {
+        timeout: 10000
+      });
+      if (res.data && res.data.m3u8) {
+        this.cache.set(cacheKey, { m3u8: res.data.m3u8, expireAt: Date.now() + 30 * 60 * 1000 });
+        return res.data.m3u8;
+      }
+    } catch (err) {
+      console.warn('[NguonC] Lỗi resolve embed:', err.message);
+    }
+    return null;
+  }
+}
+
+module.exports = new NguoncService();
+</file>
+
+<file path="src/services/kkphimService.js">
+const axios = require('axios');
+const cinemeta = require('./cinemeta');
+
+class KKPhimService {
+  constructor() {
+    this.workerBase = 'https://kkapp.pl9.workers.dev';
+    this.phimApiBase = 'https://phimapi.com';
+    this.imgBase = 'https://phimimg.com/';
+    this.cache = new Map();
+    this.cacheTtl = 5 * 60 * 1000;
+
+    // Lưu ánh xạ 2 chiều IMDb ID <-> KKPhim slug để Stremio liên kết được với Penguplay và các addon khác
+    this.imdbToSlugMap = new Map();
+    this.slugToImdbMap = new Map();
+  }
+
+  formatImageUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `${this.imgBase}${url.replace(/^\/+/, '')}`;
+  }
+
+  cleanHtml(str) {
+    if (!str) return '';
+    return str.replace(/<[^>]*>?/gm, '').trim();
+  }
+
+  extractImdbId(item) {
+    if (!item) return null;
+    if (item.imdb_json) {
+      try {
+        const parsed = JSON.parse(item.imdb_json);
+        if (parsed.id && parsed.id.startsWith('tt')) return parsed.id;
+      } catch (e) {}
+    }
+    if (item.imdb?.id && item.imdb.id.startsWith('tt')) {
+      return item.imdb.id;
+    }
+    if (item.imdbId && item.imdbId.startsWith('tt')) {
+      return item.imdbId;
+    }
+    return null;
+  }
+
+  async getCatalog(catalogId, skip = 0) {
+    const cacheKey = `cat_${catalogId}_${skip}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.expireAt > Date.now()) return cached.data;
+
+    let metas = [];
+
+    if (catalogId === 'kk_latest') {
+      const page = Math.floor(skip / 24) + 1;
+      try {
+        const res = await axios.get(`${this.phimApiBase}/danh-sach/phim-moi-cap-nhat?page=${page}`, { timeout: 8000 });
+        const items = res.data?.items || [];
+        metas = items.map(item => {
+          const imdbId = this.extractImdbId(item);
+          const finalId = imdbId || `kk:${item.slug}`;
+          if (imdbId) {
+            this.imdbToSlugMap.set(imdbId, item.slug);
+            this.slugToImdbMap.set(item.slug, imdbId);
+          }
+
+          return {
+            id: finalId,
+            name: item.name,
+            type: item.tmdb?.type === 'tv' ? 'series' : 'movie',
+            poster: this.formatImageUrl(item.poster_url),
+            background: this.formatImageUrl(item.thumb_url),
+            releaseInfo: item.year ? String(item.year) : '',
+            description: `Phim mới (${item.year || ''})`
+          };
+        });
+      } catch (err) {
+        console.error('[KKPhim] Lỗi fetch phim-moi-cap-nhat:', err.message);
+      }
+    } else {
+      const workerSlug = catalogId.replace(/^kk_/, '');
+      const page = Math.floor(skip / 40) + 1;
+
+      try {
+        const res = await axios.get(`${this.workerBase}/api/movies/category/${encodeURIComponent(workerSlug)}?page=${page}`, { timeout: 8000 });
+        const items = Array.isArray(res.data) ? res.data : [];
+
+        metas = items.map(item => {
+          const isSeries = item.type === 'series' || (item.episode_total && item.episode_total > 1) || item.current_episode?.includes('Tập');
+          const imdbId = this.extractImdbId(item);
+          const finalId = imdbId || `kk:${item.slug}`;
+          if (imdbId) {
+            this.imdbToSlugMap.set(imdbId, item.slug);
+            this.slugToImdbMap.set(item.slug, imdbId);
+          }
+
+          return {
+            id: finalId,
+            name: item.name,
+            type: isSeries ? 'series' : 'movie',
+            poster: this.formatImageUrl(item.poster_url || item.poster || item.thumb_url),
+            background: this.formatImageUrl(item.thumb_url || item.thumb || item.poster_url),
+            releaseInfo: item.year ? String(item.year) : '',
+            description: this.cleanHtml(item.description || item.movieDescription || item.sub_type || '')
+          };
+        });
+      } catch (err) {
+        console.warn(`[KKPhim] Worker fetch error cho ${workerSlug}:`, err.message);
+      }
+    }
+
+    this.cache.set(cacheKey, { data: metas, expireAt: Date.now() + this.cacheTtl });
+    return metas;
+  }
+
+  async search(keyword) {
+    if (!keyword || !keyword.trim()) return [];
+    try {
+      const cleanKw = keyword.replace(/\+/g, ' ').trim();
+      const res = await axios.get(`${this.phimApiBase}/v1/api/tim-kiem?keyword=${encodeURIComponent(cleanKw)}&limit=30`, { timeout: 8000 });
+      const items = res.data?.data?.items || [];
+      return items.map(item => {
+        const isSeries = item.episode_current && !item.episode_current.toLowerCase().includes('full');
+        const imdbId = this.extractImdbId(item);
+        const finalId = imdbId || `kk:${item.slug}`;
+        if (imdbId) {
+          this.imdbToSlugMap.set(imdbId, item.slug);
+          this.slugToImdbMap.set(item.slug, imdbId);
+        }
+
+        return {
+          id: finalId,
+          name: item.name,
+          type: isSeries ? 'series' : 'movie',
+          poster: this.formatImageUrl(item.poster_url),
+          background: this.formatImageUrl(item.thumb_url),
+          releaseInfo: item.year ? String(item.year) : '',
+          description: `${item.origin_name || ''} · ${item.lang || ''} · ${item.episode_current || ''}`
+        };
+      });
+    } catch (err) {
+      console.error('[KKPhim] Lỗi search:', err.message);
+      return [];
+    }
+  }
+
+  async getMovieDetail(slug) {
+    const cacheKey = `detail_${slug}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.expireAt > Date.now()) return cached.data;
+
+    try {
+      const res = await axios.get(`${this.phimApiBase}/phim/${encodeURIComponent(slug)}`, { timeout: 8000 });
+      const data = res.data;
+      if (!data || !data.movie) return null;
+
+      const movie = data.movie;
+      const episodes = data.episodes || [];
+
+      let hasEpisodes = false;
+      episodes.forEach(server => {
+        const list = server.server_data || [];
+        if (list.length > 1) hasEpisodes = true;
+      });
+
+      const isSeries = hasEpisodes || (movie.type === 'series') || (movie.episode_total && parseInt(movie.episode_total, 10) > 1);
+
+      const imdbId = this.extractImdbId(movie);
+      if (imdbId) {
+        this.imdbToSlugMap.set(imdbId, slug);
+        this.slugToImdbMap.set(slug, imdbId);
+      }
+
+      const idToUse = imdbId || `kk:${slug}`;
+
+      // Tạo danh sách tập cho series
+      const videos = [];
+      if (isSeries) {
+        const epSet = new Set();
+        episodes.forEach(s => {
+          (s.server_data || []).forEach(ep => {
+            const epNum = parseInt(ep.name?.replace(/\D/g, '') || '1', 10) || 1;
+            epSet.add(epNum);
+          });
+        });
+
+        const sortedNums = Array.from(epSet).sort((a, b) => a - b);
+        if (sortedNums.length === 0) sortedNums.push(1);
+
+        sortedNums.forEach(num => {
+          videos.push({
+            id: `${idToUse}:1:${num}`,
+            title: `Tập ${num}`,
+            season: 1,
+            episode: num,
+            released: new Date().toISOString()
+          });
+        });
+      }
+
+      const genres = (movie.category || []).map(c => c.name);
+      const cast = Array.isArray(movie.actor) ? movie.actor : (typeof movie.actor === 'string' ? movie.actor.split(',').map(s => s.trim()) : []);
+
+      const result = {
+        id: idToUse,
+        slug,
+        title: movie.name,
+        originTitle: movie.origin_name || '',
+        year: movie.year || null,
+        poster: this.formatImageUrl(movie.poster_url),
+        background: this.formatImageUrl(movie.thumb_url),
+        description: this.cleanHtml(movie.content || ''),
+        genres,
+        director: Array.isArray(movie.director) ? movie.director.join(', ') : (movie.director || ''),
+        cast,
+        isSeries,
+        videos,
+        episodes,
+        imdbScore: movie.imdb_score || movie.imdb?.vote_average || null,
+        imdbId
+      };
+
+      this.cache.set(cacheKey, { data: result, expireAt: Date.now() + this.cacheTtl });
+      return result;
+    } catch (err) {
+      console.error(`[KKPhim] Lỗi getMovieDetail cho ${slug}:`, err.message);
+      return null;
+    }
+  }
+
+  async findSlugByImdb(imdbId) {
+    if (this.imdbToSlugMap.has(imdbId)) {
+      return this.imdbToSlugMap.get(imdbId);
+    }
+
+    // Tra cứu qua Cinemeta để lấy tên phim
+    const meta = await cinemeta.getMeta('movie', imdbId) || await cinemeta.getMeta('series', imdbId);
+    if (meta && meta.name) {
+      const searchRes = await this.search(meta.name);
+      if (searchRes.length > 0) {
+        const foundSlug = searchRes[0].id.replace(/^kk:/, '');
+        this.imdbToSlugMap.set(imdbId, foundSlug);
+        this.slugToImdbMap.set(foundSlug, imdbId);
+        return foundSlug;
+      }
+    }
+    return null;
+  }
+}
+
+module.exports = new KKPhimService();
+</file>
+
+<file path="src/services/hlsCleaner.js">
+const { URL } = require('url');
+
+class HlsCleaner {
+  cleanM3u8(requestUrl, content, host) {
+    if (!content || typeof content !== 'string') return content;
+    const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return content;
+
+    // 1. Master Playlist (chứa #EXT-X-STREAM-INF)
+    if (content.includes('#EXT-X-STREAM-INF')) {
+      const result = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.startsWith('#EXT-X-STREAM-INF')) {
+          result.push(line);
+          if (i + 1 < lines.length && !lines[i + 1].startsWith('#')) {
+            try {
+              const variantUrl = new URL(lines[i + 1], requestUrl).href;
+              result.push(`${host}/m3u8/stream.m3u8?url=${encodeURIComponent(variantUrl)}`);
+            } catch (e) {
+              result.push(lines[i + 1]);
+            }
+            i++;
+          }
+        } else {
+          result.push(line);
+        }
+      }
+      return result.join('\n');
+    }
+
+    // 2. Media Playlist
+    const uris = lines.filter(l => !l.startsWith('#'));
+    const pathCounts = new Map();
+    for (const uri of uris) {
+      const p = uri.includes('/') ? uri.substring(0, uri.lastIndexOf('/')) : '';
+      pathCounts.set(p, (pathCounts.get(p) || 0) + 1);
+    }
+
+    let mainPath = '';
+    let maxCount = 0;
+    for (const [p, c] of pathCounts.entries()) {
+      if (c > maxCount) {
+        maxCount = c;
+        mainPath = p;
+      }
+    }
+
+    const header = [];
+    const blocks = [];
+    let currentBlock = [];
+    let isHeader = true;
+
+    for (const line of lines) {
+      if (line.startsWith('#EXT-X-DISCONTINUITY')) {
+        isHeader = false;
+        if (currentBlock.length > 0) blocks.push(currentBlock);
+        currentBlock = [];
+      } else if (isHeader && line.startsWith('#EXT') && !line.startsWith('#EXTINF')) {
+        header.push(line);
+      } else {
+        if (!line.startsWith('#EXT-X-ENDLIST')) {
+          isHeader = false;
+          currentBlock.push(line);
+        }
+      }
+    }
+    if (currentBlock.length > 0) blocks.push(currentBlock);
+
+    // Lọc bỏ triệt để các khối quảng cáo chèn ngang
+    const cleanBlocks = blocks.filter(block => {
+      const segmentsInBlock = block.filter(l => !l.startsWith('#'));
+      if (segmentsInBlock.length === 0) return true;
+
+      const firstUri = segmentsInBlock[0];
+      const blockPath = firstUri.includes('/') ? firstUri.substring(0, firstUri.lastIndexOf('/')) : '';
+      const isMainPath = blockPath === mainPath;
+      const isLongBlock = segmentsInBlock.length > 40;
+      const pathFrequency = (pathCounts.get(blockPath) || 0) / (uris.length || 1);
+      const hasConvert = segmentsInBlock.some(l => /convertv\d+\//i.test(l));
+
+      // Khối quảng cáo riêng biệt (như /v8/.../segment_0001.ts) có path lạ và ngắn -> bị loại bỏ
+      return isMainPath || isLongBlock || pathFrequency > 0.2 || hasConvert;
+    });
+
+    const finalLines = [...header];
+    for (const block of cleanBlocks) {
+      for (const line of block) {
+        if (!line.startsWith('#')) {
+          // Xóa prefix convertv* để gọi trực tiếp phân đoạn video sạch gốc
+          const cleanedLine = line.replace(/convertv\d+\//gi, '');
+          let absUrl = cleanedLine;
+          try {
+            absUrl = new URL(cleanedLine, requestUrl).href;
+          } catch (e) {}
+          finalLines.push(absUrl);
+        } else if (line.startsWith('#EXT-X-KEY')) {
+          try {
+            const keyMatch = line.match(/URI="([^"]+)"/);
+            if (keyMatch) {
+              const absKey = new URL(keyMatch[1], requestUrl).href;
+              finalLines.push(line.replace(keyMatch[1], absKey));
+            } else {
+              finalLines.push(line);
+            }
+          } catch (e) {
+            finalLines.push(line);
+          }
+        } else if (!line.startsWith('#EXT-X-DISCONTINUITY')) {
+          // Loại bỏ toàn bộ tag DISCONTINUITY của quảng cáo để trình phát không bị khựng lại hay xoay vòng
+          finalLines.push(line);
+        }
+      }
+    }
+
+    if (content.includes('#EXT-X-ENDLIST')) finalLines.push('#EXT-X-ENDLIST');
+    return finalLines.join('\n');
+  }
+
+  cleanNguoncM3u8(rawM3u8, embedUrl, host) {
+    if (!rawM3u8 || typeof rawM3u8 !== 'string') return rawM3u8;
+    const embedOrigin = new URL(embedUrl).origin;
+    const lines = rawM3u8.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const result = [];
+
+    for (const line of lines) {
+      if (!line.startsWith('#')) {
+        // Rewrite tất cả các phân đoạn sang segment proxy có kèm Referer để tránh lỗi 403 Forbidden
+        result.push(`${host}/m3u8/segment.ts?url=${encodeURIComponent(line)}&ref=${encodeURIComponent(embedOrigin)}`);
+      } else {
+        result.push(line);
+      }
+    }
+    return result.join('\n');
+  }
+}
+
+module.exports = new HlsCleaner();
+</file>
+
+<file path="src/addon.js">
+const express = require('express');
+const https = require('https');
+const axios = require('axios');
+const xem20Client = require('./services/xem20Client');
+const cinemeta = require('./services/cinemeta');
+const kkphim = require('./services/kkphimService');
+const nguonc = require('./services/nguoncService');
+const hlsCleaner = require('./services/hlsCleaner');
+const config = require('./config');
+
+const router = express.Router();
+
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 50,
+  timeout: 60000
+});
+
+// 1. MANIFEST (Tên: 'Ghiền Phim', Mô tả: 'Xem phim không quảng cáo')
+const manifest = {
+  id: 'community.ghienphim',
+  version: '2.2.0',
+  name: 'Ghiền Phim',
+  description: 'Xem phim không quảng cáo',
+  logo: 'https://xem20.net/storage/logo/favicon_xem14.png',
+  background: 'https://xem20.net/storage/poster1/download.jpg',
+  resources: ['catalog', 'meta', 'stream'],
+  types: ['movie', 'series'],
+  idPrefixes: ['tt', 'kk:', 'xem20:'],
+  catalogs: [
+    {
+      type: 'movie',
+      id: 'kk_latest',
+      name: '🔥 Phim Mới Cập Nhật',
+      extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_phim_chieu_rap',
+      name: '🎬 Phim Chiếu Rạp',
+      extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_long_tieng',
+      name: '🎙️ Phim Lồng Tiếng',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_thuyet_minh',
+      name: '🎤 Phim Thuyết Minh',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_han',
+      name: '🇰🇷 Phim Bộ Hàn Quốc',
+      extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_trung',
+      name: '📺 Phim Bộ Trung Quốc',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_au_my',
+      name: '🇺🇸 Phim Bộ Âu Mỹ',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_vn',
+      name: '🇻🇳 Phim Bộ Việt Nam',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_thai',
+      name: '🇹🇭 Phim Bộ Thái Lan',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_bo_nhat',
+      name: '🇯🇵 Phim Bộ Nhật Bản',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_anime_nhat',
+      name: '🇯🇵 Anime Hot',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_hh_trung_quoc',
+      name: '🐉 Hoạt Hình 3D Trung Quốc',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_anime_movie',
+      name: '🍿 Anime Movie Hot',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_vn',
+      name: '🇻🇳 Phim Lẻ Việt Nam',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_au_my',
+      name: '🇺🇸 Bom Tấn Âu Mỹ',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_han',
+      name: '🇰🇷 Điện Ảnh Hàn Quốc',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_trung',
+      name: '🇨🇳 Điện Ảnh Trung Quốc',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_le_thai',
+      name: '🇹🇭 Điện Ảnh Thái Lan',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_hanh_dong',
+      name: '💥 Phim Hành Động',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_kinh_di',
+      name: '💀 Phim Kinh Dị',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_hai_huoc',
+      name: '😂 Phim Hài Hước',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_co_trang',
+      name: '📜 Phim Cổ Trang',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_khoa_hoc',
+      name: '🧠 Phim Khoa Học',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'movie',
+      id: 'kk_tam_ly',
+      name: '🎭 Phim Tâm Lý',
+      extra: [{ name: 'skip', isRequired: false }]
+    },
+    {
+      type: 'series',
+      id: 'kk_tv_show',
+      name: '📺 TV Shows',
+      extra: [{ name: 'skip', isRequired: false }]
+    }
+  ]
+};
+
+router.get('/manifest.json', (req, res) => {
+  res.json(manifest);
+});
+
+// 2. CATALOG
+router.get('/catalog/:type/:id/:extra?.json', async (req, res) => {
+  const { type, id } = req.params;
+  const extraStr = req.params.extra || '';
+  const searchParams = new URLSearchParams(extraStr);
+  const search = searchParams.get('search') || req.query.search;
+  const skip = parseInt(searchParams.get('skip') || req.query.skip || '0', 10);
+
+  try {
+    let metas = [];
+    if (search) {
+      metas = await kkphim.search(search);
+    } else {
+      metas = await kkphim.getCatalog(id, skip);
+    }
+
+    res.json({ metas });
+  } catch (err) {
+    console.error('[Addon] Lỗi catalog:', err.message);
+    res.json({ metas: [] });
+  }
+});
+
+// 3. META
+router.get('/meta/:type/:id.json', async (req, res) => {
+  const { type, id } = req.params;
+
+  try {
+    let targetSlug = null;
+
+    if (id.startsWith('kk:')) {
+      targetSlug = id.replace('kk:', '');
+    } else if (id.startsWith('tt')) {
+      targetSlug = await kkphim.findSlugByImdb(id);
+    }
+
+    if (targetSlug) {
+      const detail = await kkphim.getMovieDetail(targetSlug);
+      if (detail) {
+        const meta = {
+          id: id,
+          type: detail.isSeries ? 'series' : 'movie',
+          name: detail.title,
+          genres: detail.genres,
+          poster: detail.poster,
+          background: detail.background,
+          description: detail.description,
+          releaseInfo: detail.year ? String(detail.year) : '',
+          director: detail.director ? [detail.director] : [],
+          cast: detail.cast || [],
+          imdbRating: detail.imdbScore ? String(detail.imdbScore) : undefined
+        };
+
+        if (detail.isSeries && detail.videos && detail.videos.length > 0) {
+          meta.videos = detail.videos.map(v => ({
+            ...v,
+            id: `${id}:1:${v.episode}`
+          }));
+        }
+
+        return res.json({ meta });
+      }
+    }
+
+    if (id.startsWith('xem20:')) {
+      const slug = id.replace('xem20:', '');
+      const detail = await xem20Client.getMovieDetail(slug);
+      if (!detail) return res.json({ meta: null });
+
+      const meta = {
+        id: `xem20:${slug}`,
+        type: detail.isSeries ? 'series' : 'movie',
+        name: detail.title,
+        genres: detail.genres,
+        poster: detail.poster,
+        background: detail.background,
+        description: detail.overview,
+        releaseInfo: detail.year
+      };
+
+      if (detail.isSeries) {
+        const episodes = [];
+        const sortedEps = Array.from(detail.episodeMap.keys()).sort((a, b) => a - b);
+        for (const epNum of sortedEps) {
+          episodes.push({
+            id: `xem20:${slug}:1:${epNum}`,
+            title: `Tập ${epNum}`,
+            season: 1,
+            episode: epNum,
+            released: new Date().toISOString()
+          });
+        }
+        meta.videos = episodes;
+      }
+
+      return res.json({ meta });
+    }
+
+    res.json({ meta: null });
+  } catch (err) {
+    console.error('[Addon] Lỗi meta:', err.message);
+    res.json({ meta: null });
+  }
+});
+
+// 4. STREAM
+router.get('/stream/:type/:id.json', async (req, res) => {
+  const { type, id } = req.params;
+  const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
+  const proto = isHttps ? 'https' : 'http';
+  const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
+
+  try {
+    let targetSlug = null;
+    let targetSeason = 1;
+    let targetEpisode = 1;
+    let movieName = '';
+    let movieOriginName = '';
+    let movieYear = null;
+    let kkDetail = null;
+
+    if (id.startsWith('kk:')) {
+      const parts = id.replace('kk:', '').split(':');
+      targetSlug = parts[0];
+      if (parts.length >= 3) {
+        targetSeason = parseInt(parts[1], 10) || 1;
+        targetEpisode = parseInt(parts[2], 10) || 1;
+      }
+    } else if (id.startsWith('tt')) {
+      const parts = id.split(':');
+      const imdbId = parts[0];
+      if (parts.length >= 3) {
+        targetSeason = parseInt(parts[1], 10) || 1;
+        targetEpisode = parseInt(parts[2], 10) || 1;
+      }
+
+      targetSlug = await kkphim.findSlugByImdb(imdbId);
+
+      const cm = await cinemeta.getMeta(type, imdbId);
+      if (cm && cm.name) {
+        movieOriginName = cm.name;
+        if (!movieName) movieName = cm.name;
+        movieYear = cm.year ? parseInt(cm.year, 10) : null;
+      }
+    } else if (id.startsWith('xem20:')) {
+      const parts = id.replace('xem20:', '').split(':');
+      const xSlug = parts[0];
+      if (parts.length >= 3) {
+        targetSeason = parseInt(parts[1], 10) || 1;
+        targetEpisode = parseInt(parts[2], 10) || 1;
+      }
+      const xDetail = await xem20Client.getMovieDetail(xSlug);
+      if (xDetail) {
+        movieName = xDetail.title;
+        movieYear = xDetail.year ? parseInt(xDetail.year, 10) : null;
+      }
+    }
+
+    if (targetSlug) {
+      kkDetail = await kkphim.getMovieDetail(targetSlug);
+      if (kkDetail) {
+        movieName = kkDetail.title;
+        if (!movieOriginName) movieOriginName = kkDetail.originTitle || '';
+        if (!movieYear) movieYear = kkDetail.year;
+      }
+    }
+
+    const streams = [];
+
+    // ========================================================
+    // 1. NGUỒN XEM20 (ƯU TIÊN SỐ 1 - 4K UHD & 1080P FHD)
+    // ========================================================
+    try {
+      const searchQueries = [];
+      if (movieOriginName) searchQueries.push(movieOriginName);
+      if (movieName && movieName !== movieOriginName) searchQueries.push(movieName);
+
+      let xem20Slug = null;
+      for (const q of searchQueries) {
+        if (!q || q.length < 2) continue;
+        const results = await xem20Client.search(q);
+        if (results && results.length > 0) {
+          let match = results[0];
+          if (movieYear) {
+            const yearMatch = results.find(r => r.description && r.description.includes(String(movieYear)));
+            if (yearMatch) match = yearMatch;
+          }
+          xem20Slug = match.slug;
+          break;
+        }
+      }
+
+      if (xem20Slug) {
+        const xDetail = await xem20Client.getMovieDetail(xem20Slug);
+        if (xDetail && xDetail.releases && xDetail.releases.length > 0) {
+          let matchingReleases = [];
+          if (xDetail.isSeries || targetEpisode > 1) {
+            if (xDetail.episodeMap && xDetail.episodeMap.has(targetEpisode)) {
+              matchingReleases = xDetail.episodeMap.get(targetEpisode);
+            } else {
+              matchingReleases = xDetail.releases.filter(r => r.episode === targetEpisode);
+              if (matchingReleases.length === 0) matchingReleases = xDetail.releases;
+            }
+          } else {
+            matchingReleases = xDetail.releases;
+          }
+
+          matchingReleases.forEach(rel => {
+            const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('TM.') || rel.name.includes('Thuyết Minh');
+            const isSub = rel.metaText.includes('Phụ Đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub') || rel.name.includes('Sub');
+            const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('4K') || rel.name.includes('2160p');
+            const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
+
+            let qualityTag = is4K ? '4K UHD' : (is1080 ? '1080P FHD' : 'HD 720P');
+            let audioTag = '';
+            if (isDub && isSub) audioTag = '🔊 Thuyết Minh + 💬 Vietsub';
+            else if (isDub) audioTag = '🔊 Thuyết Minh';
+            else if (isSub) audioTag = '💬 Vietsub';
+
+            const sortPriority = is4K ? 1 : (is1080 ? 2 : 3);
+
+            // Direct CDN
+            streams.push({
+              _priority: sortPriority,
+              name: `XEM20 ⚡ [${qualityTag}]`,
+              title: `${rel.name}\n⚡ Siêu Tốc (Direct CDN)${audioTag ? '\n' + audioTag : ''}`,
+              url: `${host}/play/${rel.downloadLinkId}?mode=direct`
+            });
+
+            // Proxy Bypass
+            streams.push({
+              _priority: sortPriority + 0.5,
+              name: `XEM20 🛡️ [${qualityTag}]`,
+              title: `${rel.name}\n🛡️ Dự Phòng (Proxy Bypass)${audioTag ? '\n' + audioTag : ''}`,
+              url: `${host}/play/${rel.downloadLinkId}?mode=proxy`
+            });
+          });
+        }
+      }
+    } catch (eX) {
+      console.warn('[Addon] Lỗi tìm nguồn Xem20:', eX.message);
+    }
+
+    // ========================================================
+    // 2. NGUỒN KKPHIM (DUY NHẤT LUỒNG ĐÃ QUA BỘ LỌC SẠCH)
+    // ========================================================
+    if (kkDetail && kkDetail.episodes && kkDetail.episodes.length > 0) {
+      kkDetail.episodes.forEach(server => {
+        const sName = server.server_name || 'VIP';
+        const serverData = server.server_data || [];
+        const ep = serverData.find(e => {
+          const num = parseInt(e.name?.replace(/\D/g, '') || '', 10);
+          return num === targetEpisode;
+        }) || serverData[targetEpisode - 1] || serverData[0];
+
+        if (ep && ep.link_m3u8) {
+          // Luồng M3U8 đã qua bộ lọc sạch (loại bỏ quảng cáo & convertv)
+          const cleanM3u8Url = `${host}/m3u8/stream.m3u8?url=${encodeURIComponent(ep.link_m3u8)}`;
+          const isDub = sName.toLowerCase().includes('lồng tiếng') || sName.toLowerCase().includes('thuyết minh');
+
+          streams.push({
+            _priority: isDub ? 5 : 6,
+            name: `KKPhim 🌟 [${sName.toUpperCase()}]`,
+            title: `${movieName} - Tập ${targetEpisode}\n🌟 Server VIP (${sName})`,
+            url: cleanM3u8Url,
+            behaviorHints: {
+              notWebReady: true,
+              proxyHeaders: {
+                request: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                  'Referer': 'https://phimapi.com/'
+                }
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // ========================================================
+    // 3. NGUỒN NGUONC (ĐÃ FIX QUA SEGMENT PROXY ĐẢM BẢO KHÔNG TREO)
+    // ========================================================
+    try {
+      let nguoncDetail = null;
+      if (targetSlug) {
+        nguoncDetail = await nguonc.getMovieDetail(targetSlug);
+      }
+      if (!nguoncDetail && (movieOriginName || movieName)) {
+        const kw = (movieOriginName || movieName).replace(/\((19|20)\d{2}\)/, '').trim();
+        const searchItems = await nguonc.searchMovie(kw);
+        if (searchItems.length > 0) {
+          nguoncDetail = await nguonc.getMovieDetail(searchItems[0].slug);
+        }
+      }
+
+      if (nguoncDetail && nguoncDetail.movie && nguoncDetail.movie.episodes) {
+        const nServers = nguoncDetail.movie.episodes;
+        nServers.forEach(s => {
+          const sName = s.server_name || 'Nguồn C';
+          const items = s.items || [];
+          const ep = items.find(e => {
+            const num = parseInt(e.name?.replace(/\D/g, '') || '', 10);
+            return num === targetEpisode;
+          }) || items[targetEpisode - 1] || items[0];
+
+          if (ep) {
+            let streamUrl = '';
+            if (ep.embed) {
+              streamUrl = `${host}/m3u8/nguonc.m3u8?embed=${encodeURIComponent(ep.embed)}`;
+            } else if (ep.m3u8 || ep.link_m3u8) {
+              streamUrl = `${host}/m3u8/stream.m3u8?url=${encodeURIComponent(ep.m3u8 || ep.link_m3u8)}`;
+            }
+
+            if (streamUrl) {
+              streams.push({
+                _priority: 8,
+                name: `NguonC 🛡️ [${sName.toUpperCase()}]`,
+                title: `${movieName || 'Phim'} - Tập ${targetEpisode}\n🛡️ Server Dự Phòng (${sName})`,
+                url: streamUrl
+              });
+            }
+          }
+        });
+      }
+    } catch (eN) {
+      console.warn('[Addon] Lỗi tìm nguồn NguonC:', eN.message);
+    }
+
+    streams.sort((a, b) => (a._priority || 99) - (b._priority || 99));
+    streams.forEach(s => delete s._priority);
+
+    res.json({ streams });
+  } catch (err) {
+    console.error('[Addon] Lỗi stream:', err.message);
+    res.json({ streams: [] });
+  }
+});
+
+// 5. STREAM M3U8 SẠCH (KKPHIM)
+router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl) return res.status(400).send('Missing url');
+
+  const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
+  const proto = isHttps ? 'https' : 'http';
+  const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+  res.setHeader('Cache-Control', 'no-cache');
+
+  if (req.method === 'OPTIONS' || req.method === 'HEAD') {
+    return res.status(200).end();
+  }
+
+  try {
+    const upstreamRes = await axios.get(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Referer': targetUrl
+      },
+      timeout: 10000,
+      responseType: 'text'
+    });
+
+    const cleanContent = hlsCleaner.cleanM3u8(targetUrl, upstreamRes.data, host);
+    res.end(cleanContent);
+  } catch (err) {
+    console.error('[M3U8 Clean] Lỗi tải m3u8:', err.message);
+    res.redirect(302, targetUrl);
+  }
+});
+
+// 6. NGUONC EMBED RESOLVER (REWRITE QUA SEGMENT PROXY ĐẢM BẢO 100% KHÔNG TREO)
+router.all(['/m3u8/nguonc.m3u8', '/clean/nguonc.m3u8'], async (req, res) => {
+  const embedUrl = req.query.embed;
+  if (!embedUrl) return res.status(400).send('Missing embed');
+
+  const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
+  const proto = isHttps ? 'https' : 'http';
+  const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+  res.setHeader('Cache-Control', 'no-cache');
+
+  if (req.method === 'OPTIONS' || req.method === 'HEAD') {
+    return res.status(200).end();
+  }
+
+  try {
+    const rawM3u8 = await nguonc.resolveEmbed(embedUrl);
+    if (!rawM3u8) return res.status(502).send('Failed to resolve NguonC embed stream');
+
+    const cleanContent = hlsCleaner.cleanNguoncM3u8(rawM3u8, embedUrl, host);
+    res.end(cleanContent);
+  } catch (err) {
+    console.error('[NguonC Clean] Lỗi:', err.message);
+    res.status(502).send('Error resolving embed');
+  }
+});
+
+// 7. SEGMENT PROXY CHO NGUONC (GỬI KÈM REFERER TRÁNH 403 FORBIDDEN & TRÁNH TREO)
+router.all('/m3u8/segment.ts', (req, res) => {
+  const targetUrl = req.query.url;
+  const ref = req.query.ref;
+  if (!targetUrl) return res.status(400).end();
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Content-Type', 'video/MP2T');
+
+  if (req.method === 'OPTIONS' || req.method === 'HEAD') {
+    return res.status(200).end();
+  }
+
+  const upstreamReq = https.request(targetUrl, {
+    method: 'GET',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Referer': ref || 'https://embed.streamc.xyz/'
+    },
+    agent: httpsAgent
+  }, (upstreamRes) => {
+    res.statusCode = upstreamRes.statusCode;
+    if (upstreamRes.headers['content-length']) {
+      res.setHeader('Content-Length', upstreamRes.headers['content-length']);
+    }
+    upstreamRes.pipe(res);
+  });
+
+  upstreamReq.on('error', (e) => {
+    console.error('[NguonC Segment Proxy Error]:', e.message);
+    if (!res.headersSent) res.status(502).end();
+  });
+
+  req.on('close', () => {
+    upstreamReq.destroy();
+  });
+
+  upstreamReq.end();
+});
+
+// 8. SMART PLAY STREAM ENDPOINT (XEM20 Direct CDN vs Proxy Bypass)
+router.get('/play/:id', async (req, res) => {
+  const downloadLinkId = req.params.id;
+  const mode = req.query.mode || 'direct';
+
+  try {
+    const directStreamUrl = await xem20Client.resolveStreamUrl(downloadLinkId);
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+
+    if (mode === 'direct') {
+      return res.redirect(307, directStreamUrl);
+    }
+
+    const clientRange = req.headers.range;
+    const streamHeaders = {
+      'User-Agent': config.xem20.userAgent,
+      'Referer': config.xem20.baseUrl + '/',
+      'Connection': 'keep-alive'
+    };
+
+    if (clientRange) {
+      streamHeaders['Range'] = clientRange;
+    }
+
+    const upstreamReq = https.request(directStreamUrl, {
+      method: 'GET',
+      headers: streamHeaders,
+      agent: httpsAgent
+    }, (upstreamRes) => {
+      res.statusCode = upstreamRes.statusCode;
+      const copyHeaders = [
+        'content-type',
+        'content-length',
+        'content-range',
+        'accept-ranges',
+        'last-modified',
+        'etag'
+      ];
+      copyHeaders.forEach((h) => {
+        if (upstreamRes.headers[h]) {
+          res.setHeader(h, upstreamRes.headers[h]);
+        }
+      });
+      upstreamRes.pipe(res);
+    });
+
+    upstreamReq.on('error', (e) => {
+      console.error(`[Play #${downloadLinkId}] [Proxy Error]:`, e.message);
+      if (!res.headersSent) res.status(502).end();
+    });
+
+    req.on('close', () => {
+      upstreamReq.destroy();
+    });
+
+    upstreamReq.end();
+  } catch (err) {
+    console.error(`[Play #${downloadLinkId}] Lỗi lấy stream:`, err.message);
+    res.status(500).send('Không thể phát video này từ máy chủ xem20.');
+  }
+});
+
+// 9. API /api/xem20/movie (Hỗ trợ tương thích cho Phimkk Android TV app)
+router.get('/api/xem20/movie', async (req, res) => {
+  const { title, originTitle, year } = req.query;
+  if (!title && !originTitle) {
+    return res.status(400).json({ success: false, message: 'Missing title or originTitle' });
+  }
+
+  const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https' || (req.headers.host && req.headers.host.includes('onrender.com'));
+  const proto = isHttps ? 'https' : 'http';
+  const host = req.headers.host ? `${proto}://${req.headers.host}` : config.baseUrl;
+
+  try {
+    const searchQueries = [];
+    if (originTitle) searchQueries.push(originTitle.trim());
+    if (title && title !== originTitle) searchQueries.push(title.trim());
+
+    let foundSlug = null;
+    for (const q of searchQueries) {
+      if (!q || q.length < 2) continue;
+      const results = await xem20Client.search(q);
+      if (results && results.length > 0) {
+        let match = results[0];
+        if (year) {
+          const yMatch = results.find(r => r.description && r.description.includes(String(year)));
+          if (yMatch) match = yMatch;
+        }
+        foundSlug = match.slug;
+        break;
+      }
+    }
+
+    if (!foundSlug) {
+      return res.json({ success: false, servers: [] });
+    }
+
+    const detail = await xem20Client.getMovieDetail(foundSlug);
+    if (!detail || !detail.releases || detail.releases.length === 0) {
+      return res.json({ success: false, servers: [] });
+    }
+
+    const servers = [];
+    if (detail.isSeries && detail.episodeMap && detail.episodeMap.size > 0) {
+      const sortedEps = Array.from(detail.episodeMap.keys()).sort((a, b) => a - b);
+      const releaseTypes = new Map();
+
+      for (const epNum of sortedEps) {
+        const rels = detail.episodeMap.get(epNum) || [];
+        for (const rel of rels) {
+          const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('4K') || rel.name.includes('2160p');
+          const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
+          const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('Thuyết Minh');
+          const isSub = rel.metaText.includes('Phụ đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub');
+
+          let sName = is4K ? '4K UHD' : '1080P FHD';
+          if (isDub && !isSub) sName += ' (TM)';
+          else if (isSub && !isDub) sName += ' (Sub)';
+
+          if (!releaseTypes.has(sName)) releaseTypes.set(sName, []);
+          releaseTypes.get(sName).push({
+            name: `Tập ${epNum}`,
+            slug: `tap-${epNum}`,
+            linkM3u8: `${host}/play/${rel.downloadLinkId}?mode=direct`
+          });
+        }
+      }
+
+      for (const [sName, epList] of releaseTypes.entries()) {
+        servers.push({
+          serverName: sName,
+          serverData: epList
+        });
+      }
+    } else {
+      detail.releases.forEach(rel => {
+        const is4K = rel.metaText.includes('4K') || rel.metaText.includes('2160P') || rel.name.includes('4K') || rel.name.includes('2160p');
+        const is1080 = rel.metaText.includes('1080P') || rel.name.includes('1080p');
+        const isDub = rel.metaText.includes('Thuyết minh') || rel.metaText.includes('T.Minh') || rel.name.includes('Thuyết Minh');
+        const isSub = rel.metaText.includes('Phụ đề') || rel.metaText.includes('P.Đề') || rel.name.includes('Vietsub');
+
+        let qualityTag = is4K ? '4K UHD' : (is1080 ? '1080P FHD' : 'HD 720P');
+        let audioTag = '';
+        if (isDub && isSub) audioTag = 'Thuyết Minh + Vietsub';
+        else if (isDub) audioTag = 'Thuyết Minh';
+        else if (isSub) audioTag = 'Vietsub';
+
+        const serverName = `${qualityTag}${audioTag ? ' (' + audioTag + ')' : ''}`;
+
+        servers.push({
+          serverName: serverName,
+          serverData: [
+            {
+              name: 'Full',
+              slug: 'full',
+              linkM3u8: `${host}/play/${rel.downloadLinkId}?mode=direct`
+            }
+          ]
+        });
+      });
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=3600');
+    res.json({
+      success: true,
+      servers: servers
+    });
+  } catch (err) {
+    console.error('[API /api/xem20/movie] Error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+module.exports = router;
+</file>
+
+</files>
