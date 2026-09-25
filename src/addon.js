@@ -523,7 +523,7 @@ router.get('/stream/:type/:id.json', async (req, res) => {
   }
 });
 
-// 5. STREAM M3U8 SẠCH (KKPHIM)
+// 5. STREAM M3U8 SẠCH (KKPHIM + mọi nguồn HLS)
 router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl) return res.status(400).send('Missing url');
@@ -542,17 +542,36 @@ router.all(['/m3u8/stream.m3u8', '/clean/stream.m3u8'], async (req, res) => {
     return res.status(200).end();
   }
 
+  // Xác định Referer cần gửi khi fetch segment:
+  // - Nếu caller truyền &ref= (từ master playlist variant đã được rewrite) → dùng luôn
+  // - Nếu URL từ phimapi.com (kkphim) → Referer là https://phimapi.com/
+  // - Các nguồn khác → không proxy segment (dùng absolute URL trực tiếp)
+  let referer = req.query.ref || null;
+  if (!referer) {
+    try {
+      const urlHost = new URL(targetUrl).hostname;
+      if (urlHost.includes('phimapi.com') || urlHost.includes('phimimg.com') || urlHost.includes('hlsplay')) {
+        referer = 'https://phimapi.com/';
+      }
+    } catch (_) {}
+  }
+
+  // Referer để fetch m3u8 gốc từ upstream
+  const upstreamReferer = referer || targetUrl;
+
   try {
     const upstreamRes = await axios.get(targetUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Referer': targetUrl
+        'Referer': upstreamReferer
       },
       timeout: 10000,
       responseType: 'text'
     });
 
-    const cleanContent = hlsCleaner.cleanM3u8(targetUrl, upstreamRes.data, host);
+    // Truyền referer vào cleaner → segments được proxy qua server kèm Referer đúng
+    // Không có referer → segment URL absolute (stream tự xử lý, như trường hợp xem20)
+    const cleanContent = hlsCleaner.cleanM3u8(targetUrl, upstreamRes.data, host, referer);
     res.end(cleanContent);
   } catch (err) {
     console.error('[M3U8 Clean] Lỗi tải m3u8:', err.message);
