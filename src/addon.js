@@ -411,7 +411,16 @@ router.get('/stream/:type/:id.json', async (req, res) => {
               _priority: sortPriority,
               name: `XEM20 ⚡ [${qualityTag}]`,
               title: `${rel.name}\n⚡ Siêu Tốc (Direct CDN)${audioTag ? '\n' + audioTag : ''}`,
-              url: `${host}/play/${rel.downloadLinkId}?mode=direct`
+              url: `${host}/play/${rel.downloadLinkId}?mode=direct`,
+              behaviorHints: {
+                notWebReady: true,
+                proxyHeaders: {
+                  request: {
+                    'User-Agent': config.xem20.userAgent,
+                    'Referer': config.xem20.baseUrl + '/'
+                  }
+                }
+              }
             });
 
             // Proxy Bypass
@@ -419,7 +428,10 @@ router.get('/stream/:type/:id.json', async (req, res) => {
               _priority: sortPriority + 0.5,
               name: `XEM20 🛡️ [${qualityTag}]`,
               title: `${rel.name}\n🛡️ Dự Phòng (Proxy Bypass)${audioTag ? '\n' + audioTag : ''}`,
-              url: `${host}/play/${rel.downloadLinkId}?mode=proxy`
+              url: `${host}/play/${rel.downloadLinkId}?mode=proxy`,
+              behaviorHints: {
+                notWebReady: true
+              }
             });
           });
         }
